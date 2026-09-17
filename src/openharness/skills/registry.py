@@ -1,4 +1,6 @@
 """Skill registry."""
+#技能注册表
+#用于管理“技能”注册表的模块
 
 from __future__ import annotations
 
@@ -7,6 +9,7 @@ from openharness.skills.types import SkillDefinition
 
 class SkillRegistry:
     """Store loaded skills by name."""
+    #按名称存储已加载的技能
 
     def __init__(self) -> None:
         self._skills: dict[str, SkillDefinition] = {}
@@ -21,6 +24,7 @@ class SkillRegistry:
         """Return a skill by name."""
         return self._skills.get(name)
 
+    #返回所有已注册技能的列表，按名称排序，且去重
     def list_skills(self) -> list[SkillDefinition]:
         """Return all skills sorted by name."""
         unique: dict[tuple[str, str | None], SkillDefinition] = {}

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pydantic import BaseModel
 
 
+#通俗理解：PluginManifest是插件的"身份证" + "说明书"
 class PluginManifest(BaseModel):
     """Plugin manifest stored in plugin.json or .claude-plugin/plugin.json."""
 

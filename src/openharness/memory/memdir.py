@@ -1,4 +1,5 @@
 """Memory prompt helpers."""
+#记忆提示词辅助工具
 
 from __future__ import annotations
 
@@ -6,9 +7,9 @@ from pathlib import Path
 
 from openharness.memory.paths import get_memory_entrypoint, get_project_memory_dir
 from openharness.memory.schema import (
-    MAX_ENTRYPOINT_BYTES,
-    MEMORY_POLICY_LINES,
-    truncate_entrypoint_content,
+    MAX_ENTRYPOINT_BYTES,#记忆文件的最大字节数限制（常量）
+    MEMORY_POLICY_LINES,#记忆使用策略的固定文本行（列表），比如"只追加不删除"、"每次会话结束更新"等规则
+    truncate_entrypoint_content,#截断记忆内容的函数，保证不超过限制
 )
 
 
@@ -19,8 +20,9 @@ def load_memory_prompt(
     max_entrypoint_bytes: int = MAX_ENTRYPOINT_BYTES,
 ) -> str | None:
     """Return the memory prompt section for the current project."""
-    memory_dir = get_project_memory_dir(cwd)
-    entrypoint = get_memory_entrypoint(cwd)
+    #说明返回值是"当前项目的记忆提示部分"
+    memory_dir = get_project_memory_dir(cwd)    #获取记忆目录
+    entrypoint = get_memory_entrypoint(cwd)     #获取记忆入口文件
     lines = [
         "# Memory",
         f"- Persistent memory directory: {memory_dir}",

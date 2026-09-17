@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+#stdio 服务器配置
 class McpStdioServerConfig(BaseModel):
     """stdio MCP server configuration."""
 
@@ -18,6 +19,7 @@ class McpStdioServerConfig(BaseModel):
     cwd: str | None = None
 
 
+#HTTP 服务器配置
 class McpHttpServerConfig(BaseModel):
     """HTTP MCP server configuration."""
 
@@ -43,6 +45,7 @@ class McpJsonConfig(BaseModel):
     mcpServers: dict[str, McpServerConfig] = Field(default_factory=dict)
 
 
+#工具元数据
 @dataclass(frozen=True)
 class McpToolInfo:
     """Tool metadata exposed by an MCP server."""
@@ -53,6 +56,7 @@ class McpToolInfo:
     input_schema: dict[str, object]
 
 
+#资源元数据
 @dataclass(frozen=True)
 class McpResourceInfo:
     """Resource metadata exposed by an MCP server."""

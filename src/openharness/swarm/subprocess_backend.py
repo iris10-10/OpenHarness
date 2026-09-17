@@ -1,4 +1,5 @@
 """Subprocess-based TeammateExecutor implementation."""
+#基于子进程的 TeammateExecutor 实现
 
 from __future__ import annotations
 
@@ -32,18 +33,22 @@ class SubprocessBackend:
     to create and manage the child processes, communicating via stdin/stdout.
     """
 
+    #这是一个类属性，用于标识这个后端的类型名称，值为 "subprocess"。外部代码可以通过它来判断当前使用的是哪种后端
     type: BackendType = "subprocess"
 
     # Maps agent_id -> task_id for tracking live agents
+    #这里声明了一个类级别的实例属性，这个字典用于追踪所有当前正在运行的子进程队友，方便后续通过 agent_id 找到对应的任务ID，从而发送消息或关闭它
     _agent_tasks: dict[str, str]
 
     def __init__(self) -> None:
         self._agent_tasks = {}
 
+    #子进程（subprocess）是几乎所有操作系统（Windows、macOS、Linux）都原生支持的最基础功能。只要 Python 解释器能运行，subprocess 模块就能用。
     def is_available(self) -> bool:
         """Subprocess backend is always available."""
         return True
 
+    #通过任务管理器启动一个子进程队友，构建命令行，创建一个 local_agent 任务，并通过标准输入接收初始提示词
     async def spawn(self, config: TeammateSpawnConfig) -> SpawnResult:
         """Spawn a new teammate as a subprocess via the task manager.
 
@@ -84,6 +89,7 @@ class SubprocessBackend:
             else:
                 argv = [teammate_cmd, "--task-worker"] + flags
 
+        #获取任务管理器
         manager = get_task_manager()
         try:
             record = await manager.create_agent_task(
@@ -114,6 +120,7 @@ class SubprocessBackend:
             backend_type=self.type,
         )
 
+    #根据队友名字找到它对应的子进程，然后把你的消息打包成JSON格式，通过标准输入管道发给它
     async def send_message(self, agent_id: str, message: TeammateMessage) -> None:
         """Send a message to a running teammate via its stdin pipe.
 
@@ -138,6 +145,7 @@ class SubprocessBackend:
         await manager.write_to_task(task_id, json.dumps(payload))
         logger.debug("Sent message to %s (task %s)", agent_id, task_id)
 
+    #关闭一个正在运行的AI队友，并清理相关记录
     async def shutdown(self, agent_id: str, *, force: bool = False) -> bool:
         """Terminate a subprocess teammate.
 

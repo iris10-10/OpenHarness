@@ -1,4 +1,5 @@
 """Provider/auth capability helpers."""
+#是 API 层的"能力探测"模块，负责在运行时推断当前用的是哪家模型服务商、用什么认证方式、支不支持语音/视觉等能力。
 
 from __future__ import annotations
 
@@ -10,6 +11,7 @@ from openharness.auth.storage import load_external_binding
 from openharness.api.registry import detect_provider_from_registry
 from openharness.config.settings import Settings
 
+#认证方式映射表
 _AUTH_KIND: dict[str, str] = {
     "anthropic": "api_key",
     "openai_compat": "api_key",
@@ -18,6 +20,7 @@ _AUTH_KIND: dict[str, str] = {
     "anthropic_claude": "external_oauth",
 }
 
+#给每个后端一个"为什么不支持语音"的说明字符串
 _VOICE_REASON: dict[str, str] = {
     "anthropic": (
         "voice mode shell exists, but live voice auth/streaming is not configured in this build"
@@ -62,7 +65,8 @@ def detect_provider(settings: Settings) -> ProviderInfo:
             voice_supported=False,
             voice_reason=_VOICE_REASON["copilot"],
         )
-
+    
+    #根据模型、API 密钥、基础 URL 等信息，从注册表中检测出当前用的是哪家模型服务商。
     spec = detect_provider_from_registry(
         model=settings.model,
         api_key=settings.api_key or None,
@@ -121,6 +125,7 @@ def auth_status(settings: Settings) -> str:
                 return "invalid base_url"
             return "missing (run 'oh auth claude-login')"
         return "missing"
+    # 判断是否外部认证
     if resolved.source.startswith("external:"):
         return f"configured ({resolved.source.removeprefix('external:')})"
     return "configured"
@@ -172,6 +177,7 @@ _MULTIMODAL_MODEL_PATTERNS: list[re.Pattern[str]] = [
 ]
 
 
+# 检查模型是否支持视觉能力
 def is_model_multimodal(model: str) -> bool:
     """Return True when the model name indicates multimodal (vision) capability.
 

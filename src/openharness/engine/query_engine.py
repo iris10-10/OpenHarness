@@ -19,6 +19,7 @@ from openharness.tools.base import ToolRegistry
 
 
 class QueryEngine:
+    #查询引擎，负责处理用户查询和模型交互
     """Owns conversation history and the tool-aware model loop."""
 
     def __init__(
@@ -138,6 +139,7 @@ class QueryEngine:
         """Replace the in-memory conversation history."""
         self._messages = list(messages)
 
+    #后台记忆整合
     def _schedule_auto_dream(self) -> None:
         """Fire-and-forget background memory consolidation after a user turn."""
         if self._settings is None:
@@ -152,6 +154,7 @@ class QueryEngine:
             **kwargs,
         )
 
+    #准备会话记忆元数据，检查磁盘是否存在会话记忆文件
     def _prepare_session_memory(self) -> None:
         """Expose file-backed session memory to compaction when enabled."""
 
@@ -167,6 +170,7 @@ class QueryEngine:
             session_id=str(self._tool_metadata.get("session_id") or "default"),
         )
 
+    #持久化会话快照
     async def _update_session_memory(self) -> None:
         """Persist a session checkpoint after a user turn."""
 
@@ -183,6 +187,7 @@ class QueryEngine:
             session_id=str(self._tool_metadata.get("session_id") or "default"),
         )
 
+    #提取长期记忆
     async def _extract_durable_memories(self) -> None:
         """Run the optional durable memory extraction pass."""
 
@@ -209,6 +214,7 @@ class QueryEngine:
             "written_paths": [str(path) for path in result.written_paths],
         }
 
+    #检查是否有未完成的任务
     def has_pending_continuation(self) -> bool:
         """Return True when the conversation ends with tool results awaiting a follow-up model turn."""
         if not self._messages:
@@ -224,6 +230,7 @@ class QueryEngine:
             return bool(msg.tool_uses)
         return False
 
+# 把“用户的一句话”，通过“记下来 -> 组织上下文 -> 交给AI -> 流式反馈 -> 记忆沉淀”这个链条，变成了“一次完整的AI交互”
     async def submit_message(self, prompt: str | ConversationMessage) -> AsyncIterator[StreamEvent]:
         """Append a user message and execute the query loop."""
         user_message = (
@@ -231,7 +238,9 @@ class QueryEngine:
             if isinstance(prompt, ConversationMessage)
             else ConversationMessage.from_user_text(prompt)
         )
+        #检查用户消息有内容，且没被标记为"抑制目标记录"
         if user_message.text.strip() and not self._tool_metadata.pop("_suppress_next_user_goal", False):
+            #调用 remember_user_goal 记录用户这次的目标/意图（用于上下文分析和追踪）
             remember_user_goal(self._tool_metadata, user_message.text)
         self._prepare_session_memory()
         self._messages = sanitize_conversation_messages(self._messages)
@@ -244,6 +253,7 @@ class QueryEngine:
                     "prompt": user_message.text,
                 },
             )
+        #创建查询上下文，包含 API 客户端、工具注册器、权限检查器、工作目录、模型、系统提示词等
         context = QueryContext(
             api_client=self._api_client,
             tool_registry=self._tool_registry,
@@ -261,11 +271,14 @@ class QueryEngine:
             hook_executor=self._hook_executor,
             tool_metadata=self._tool_metadata,
         )
+        #复制一份消息列表（避免污染原始 self._messages）
         query_messages = list(self._messages)
+        #构建协调上下文消息（如果有）
         coordinator_context = self._build_coordinator_context_message()
         if coordinator_context is not None:
             query_messages.append(coordinator_context)
         try:
+            #执行查询循环
             async for event, usage in run_query(context, query_messages):
                 if isinstance(event, AssistantTurnComplete):
                     self._messages = list(query_messages)
@@ -277,10 +290,11 @@ class QueryEngine:
             await self._extract_durable_memories()
             self._schedule_auto_dream()
 
+    #在不添加新用户消息的情况下，让 AI 继续处理手头未完成的任务
     async def continue_pending(self, *, max_turns: int | None = None) -> AsyncIterator[StreamEvent]:
         """Continue an interrupted tool loop without appending a new user message."""
-        self._prepare_session_memory()
-        self._messages = sanitize_conversation_messages(self._messages)
+        self._prepare_session_memory()#加载会话记忆，确保有最新的上下文
+        self._messages = sanitize_conversation_messages(self._messages)#清理消息列表
         context = QueryContext(
             api_client=self._api_client,
             tool_registry=self._tool_registry,

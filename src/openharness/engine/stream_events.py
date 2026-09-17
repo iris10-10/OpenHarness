@@ -61,6 +61,7 @@ class StatusEvent:
 class CompactProgressEvent:
     """Structured progress event for conversation compaction."""
 
+    #记录阶段
     phase: Literal[
         "hooks_start",
         "context_collapse_start",
@@ -74,8 +75,8 @@ class CompactProgressEvent:
     ]
     trigger: Literal["auto", "manual", "reactive"]
     message: str | None = None
-    attempt: int | None = None
-    checkpoint: str | None = None
+    attempt: int | None = None  #尝试次数
+    checkpoint: str | None = None   #检查点标识，可以回滚
     metadata: dict[str, Any] | None = None
 
 

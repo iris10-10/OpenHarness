@@ -1,4 +1,5 @@
 """Core tool-aware query loop."""
+#这里是整个系统的核心发动机，专门负责 AI 和工具之间的多轮交互循环。
 
 from __future__ import annotations
 
@@ -631,9 +632,10 @@ async def _preprocess_images_in_messages(
 
 
 async def run_query(
-    context: QueryContext,
-    messages: list[ConversationMessage],
+    context: QueryContext, # 上下文配置（模型、token限制、钩子等）
+    messages: list[ConversationMessage], # 对话历史（可变列表）
 ) -> AsyncIterator[tuple[StreamEvent, UsageSnapshot | None]]:
+    #返回一个异步迭代器，每次 yield 一个事件（如文本增量、工具执行状态、错误等）和可选的用量快照。
     """Run the conversation loop until the model stops requesting tools.
 
     Auto-compaction is checked at the start of each turn.  When the
@@ -647,26 +649,30 @@ async def run_query(
         auto_compact_if_needed,
     )
 
-    compact_state = AutoCompactState()
-    reactive_compact_attempted = False
+    # 初始化阶段
+    compact_state = AutoCompactState()  # 初始化自动压缩状态，记录压缩状态，避免重复压缩
+    reactive_compact_attempted = False # 记录是否尝试过反应式压缩
     last_compaction_result: tuple[list[ConversationMessage], bool] = (messages, False)
     effective_max_tokens = _bounded_completion_tokens(
         context.max_tokens,
         context.context_window_tokens,
-    )
-    reported_token_clamp = False
+    )# 限制输出token数（防止超限）
+    reported_token_clamp = False# 是否已报告过token被截断
 
+    #负责执行对话历史压缩
     async def _stream_compaction(
         *,
         trigger: str,
         force: bool = False,
     ) -> AsyncIterator[tuple[StreamEvent, UsageSnapshot | None]]:
         nonlocal last_compaction_result
-        progress_queue: asyncio.Queue[CompactProgressEvent] = asyncio.Queue()
+        progress_queue: asyncio.Queue[CompactProgressEvent] = asyncio.Queue()#一个异步队列，用于在后台任务和生成器之间传递进度事件。
 
         async def _progress(event: CompactProgressEvent) -> None:
             await progress_queue.put(event)
 
+        #asyncio.create_task 创建一个异步任务，用于在后台执行压缩操作
+        # 这个任务会在 _progress_compaction 函数中被等待，直到压缩完成
         task = asyncio.create_task(
             auto_compact_if_needed(
                 messages,
@@ -683,6 +689,7 @@ async def run_query(
                 auto_compact_threshold_tokens=context.auto_compact_threshold_tokens,
             )
         )
+        #循环监听任务进度（带超时）
         while True:
             try:
                 event = await asyncio.wait_for(progress_queue.get(), timeout=0.05)
@@ -691,6 +698,7 @@ async def run_query(
                 if task.done():
                     break
                 continue
+        # 处理队列中剩余的事件
         while not progress_queue.empty():
             yield progress_queue.get_nowait(), None
         last_compaction_result = await task
@@ -699,8 +707,11 @@ async def run_query(
     turn_count = 0
     while context.max_turns is None or turn_count < context.max_turns:
         turn_count += 1
+        #因为模型的token限制，所以需要在每次循环开始时检查是否需要压缩对话历史
+        # 如果压缩后token数超过最大限制，就报告一次，避免重复报告
         if effective_max_tokens != context.max_tokens and not reported_token_clamp:
             reported_token_clamp = True
+            #通过 yield 发送一个状态事件，告知调用方：你请求的 max_tokens 被截断了，实际使用的是多少
             yield StatusEvent(
                 message=(
                     "Requested max_tokens="
@@ -709,18 +720,23 @@ async def run_query(
                 )
             ), None
         # --- auto-compact check before calling the model ---------------
+        #执行自动压缩，并获取压缩结果
         async for event, usage in _stream_compaction(trigger="auto"):
             yield event, usage
         compacted_messages, was_compacted = last_compaction_result
+        # 如果压缩了，就更新对话历史
         if compacted_messages is not messages:
             messages[:] = compacted_messages
         # ---------------------------------------------------------------
 
         # --- image preprocessing: convert ImageBlocks to text for non-vision models ---
+        #这段代码是在调用模型之前，对消息中的图片进行预处理。
         async for event in _preprocess_images_in_messages(messages, context):
             yield event, None
         # -----------------------------------------------------------------------------
 
+        #final_message 用于存储模型返回的最终消息
+        #usage 用于存储模型调用的资源使用情况
         final_message: ConversationMessage | None = None
         usage = UsageSnapshot()
 
@@ -735,9 +751,11 @@ async def run_query(
                     effort=context.effort,
                 )
             ):
+                #处理文本增量事件，直接 yield 给调用方
                 if isinstance(event, ApiTextDeltaEvent):
                     yield AssistantTextDelta(text=event.text), None
                     continue
+                #处理重试事件，直接 yield 给调用方
                 if isinstance(event, ApiRetryEvent):
                     yield StatusEvent(
                         message=(
@@ -747,11 +765,13 @@ async def run_query(
                     ), None
                     continue
 
+                #处理完成事件，直接 yield 给调用方
                 if isinstance(event, ApiMessageCompleteEvent):
                     final_message = event.message
                     usage = event.usage
         except Exception as exc:
             error_msg = str(exc)
+            #异常类型1：输出 Token 超限
             if _is_completion_token_limit_error(exc):
                 supported_limit = _extract_completion_token_limit(exc)
                 if supported_limit is not None and effective_max_tokens > supported_limit:
@@ -764,7 +784,10 @@ async def run_query(
                         )
                     ), None
                     turn_count = max(0, turn_count - 1)
+                    #直接跳过当前循环，继续下一次循环
                     continue
+            #异常类型2：输入 Token 超限
+            #还没有尝试过压缩对话历史并且当前错误是输入 Token 超限，就尝试压缩对话历史
             if not reactive_compact_attempted and _is_prompt_too_long_error(exc):
                 reactive_compact_attempted = True
                 yield StatusEvent(message=REACTIVE_COMPACT_STATUS_MESSAGE), None
@@ -775,20 +798,28 @@ async def run_query(
                     messages[:] = compacted_messages
                 if was_compacted:
                     continue
+            #异常类型3：网络错误
+            #如果错误信息中包含 "connect"、"timeout" 或 "network"，就认为是网络错误
+            #并提示用户检查互联网连接并重试
             if "connect" in error_msg.lower() or "timeout" in error_msg.lower() or "network" in error_msg.lower():
                 yield ErrorEvent(message=f"Network error: {error_msg}. Check your internet connection and try again."), None
             else:
                 yield ErrorEvent(message=f"API error: {error_msg}"), None
             return
 
+        #确保模型返回了有效的最终响应，否则抛出异常。
         if final_message is None:
             raise RuntimeError("Model stream finished without a final message")
 
+        # 处理协调者模式下的特殊消息
+        #多agent 模式下，协调者需要特殊处理，因为协调者需要根据其他 agent 的响应来判断是否需要继续调用其他 agent
         coordinator_context_message: ConversationMessage | None = None
+        # 检查系统提示词，判断当前是否处于"协调者模式"
         if context.system_prompt.startswith("You are a **coordinator**."):
             if messages and messages[-1].role == "user" and messages[-1].text.startswith("# Coordinator User Context"):
                 coordinator_context_message = messages.pop()
 
+        #检测并处理模型返回的空消息，防止空消息破坏对话状态。
         if final_message.role == "assistant" and final_message.is_effectively_empty():
             log.warning("dropping empty assistant message from provider response")
             yield ErrorEvent(
@@ -839,6 +870,7 @@ async def run_query(
             ), None
             tool_results = [result]
         else:
+            # 处理多个工具调用的情况，并发执行
             # Multiple tools: execute concurrently, emit events after
             for tc in tool_calls:
                 yield ToolExecutionStarted(tool_name=tc.name, tool_input=tc.input), None
@@ -869,6 +901,7 @@ async def run_query(
                     )
                 tool_results.append(result)
 
+            #逐个通知用户每个工具已经执行完成，并输出执行结果。
             for tc, result in zip(tool_calls, tool_results):
                 yield ToolExecutionCompleted(
                     tool_name=tc.name,
@@ -877,6 +910,7 @@ async def run_query(
                     metadata=result.result_metadata,
                 ), None
 
+        #把所有工具的执行结果作为一条用户消息添加到对话历史中
         messages.append(ConversationMessage(role="user", content=tool_results))
 
     if context.max_turns is not None:
@@ -904,6 +938,7 @@ async def _execute_tool_call(
 
     log.debug("tool_call start: %s id=%s", tool_name, tool_use_id)
 
+    #从注册表中获取工具实例，检查工具是否存在
     tool = context.tool_registry.get(tool_name)
     if tool is None:
         log.warning("unknown tool: %s", tool_name)
@@ -913,6 +948,7 @@ async def _execute_tool_call(
             is_error=True,
         )
 
+    #验证工具输入参数，确保它们符合工具定义的数据模型要求
     try:
         parsed_input = tool.input_model.model_validate(tool_input)
     except Exception as exc:
@@ -926,10 +962,13 @@ async def _execute_tool_call(
     # Normalize common tool inputs before permission checks so path rules apply
     # consistently across built-in tools that use `file_path`, `path`, or
     # directory-scoped roots such as `glob`/`grep`.
+    #从工具输入中提取文件路径，用于权限判断
     _file_path = _resolve_permission_file_path(context.cwd, tool_input, parsed_input)
+    #从工具输入中提取命令，用于权限判断
     _command = _extract_permission_command(tool_input, parsed_input)
     log.debug("permission check: %s read_only=%s path=%s cmd=%s",
               tool_name, tool.is_read_only(parsed_input), _file_path, _command and _command[:80])
+    #根据上下文评估是否允许该操作
     decision = context.permission_checker.evaluate(
         tool_name,
         is_read_only=tool.is_read_only(parsed_input),
@@ -995,6 +1034,7 @@ async def _execute_tool_call(
         is_error=result.is_error,
         result_metadata=dict(result.metadata or {}),
     )
+    #记录工具执行信息
     _record_tool_carryover(
         context,
         tool_name=tool_name,

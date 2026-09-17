@@ -1,3 +1,4 @@
+#系统提示词组装器——它负责把"基础人设指令"和"运行时环境信息"拼成最终发给模型的 system prompt
 """System prompt builder for OpenHarness.
 
 Assembles the system prompt from environment info and user configuration.
@@ -85,6 +86,7 @@ def _format_environment_section(env: EnvironmentInfo) -> str:
     return "\n".join(lines)
 
 
+#组装 AI 的"系统提示词"，把固定规则和当前环境信息合并成一份完整的指令
 def build_system_prompt(
     custom_prompt: str | None = None,
     env: EnvironmentInfo | None = None,
@@ -100,10 +102,13 @@ def build_system_prompt(
     Returns:
         The assembled system prompt string.
     """
+    #如果 env 这个变量是空的（None），那就自动去获取当前工作目录（cwd）下的环境信息，把它赋值给 env
     if env is None:
         env = get_environment_info(cwd=cwd)
 
+    #custom_prompt 参数如果传了，会完全替换 _BASE_SYSTEM_PROMPT
     base = custom_prompt if custom_prompt is not None else _BASE_SYSTEM_PROMPT
+    #把环境信息（可能是字典/对象）转换成适合显示或记录的格式化字符串
     env_section = _format_environment_section(env)
 
     return f"{base}\n\n{env_section}"

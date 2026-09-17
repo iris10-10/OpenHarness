@@ -36,7 +36,9 @@ RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 529}
 OAUTH_BETA_HEADER = "oauth-2025-04-20"
 
 
-@dataclass(frozen=True)
+#请求:模型、消息列表、系统提示、工具等
+#这是个 Python 装饰器,来自标准库 dataclasses,作用是自动生成一个数据类,并且让实例不可变(创建后不能改)
+@dataclass(frozen=True)#frozen=True 表示实例不可变,创建后不能改
 class ApiMessageRequest:
     """Input parameters for a model invocation."""
 
@@ -45,9 +47,10 @@ class ApiMessageRequest:
     system_prompt: str | None = None
     max_tokens: int = 4096
     tools: list[dict[str, Any]] = field(default_factory=list)
-    effort: str | None = None
+    effort: str | None = None#这是思考深度
 
 
+#模型吐的一个字片段，包含模型生成的文本和模型的使用情况
 @dataclass(frozen=True)
 class ApiTextDeltaEvent:
     """Incremental text produced by the model."""
@@ -55,6 +58,7 @@ class ApiTextDeltaEvent:
     text: str
 
 
+#一轮结束的完整消息 + token 用量
 @dataclass(frozen=True)
 class ApiMessageCompleteEvent:
     """Terminal event containing the full assistant message."""
@@ -64,6 +68,7 @@ class ApiMessageCompleteEvent:
     stop_reason: str | None = None
 
 
+#重试事件
 @dataclass(frozen=True)
 class ApiRetryEvent:
     """A recoverable upstream failure that will be retried automatically."""
@@ -74,9 +79,11 @@ class ApiRetryEvent:
     delay_seconds: float
 
 
+#ApiStreamEvent 这个类型，可以是以下三种类型中的任意一种
 ApiStreamEvent = ApiTextDeltaEvent | ApiMessageCompleteEvent | ApiRetryEvent
 
 
+#定义了一个"标准接口"，让不同的 API 客户端都能用同一套代码来调用
 class SupportsStreamingMessages(Protocol):
     """Protocol used by the query engine in tests and production."""
 
@@ -200,8 +207,11 @@ class AnthropicApiClient:
                 raise _translate_api_error(last_error) from last_error
             raise RequestFailure(str(last_error)) from last_error
 
+    #AsyncIterator[ApiStreamEvent]就是异步迭代器，每次迭代返回一个 ApiStreamEvent 类型的事件
+    #是"一次模型调用"的完整执行者：把请求组装好发给模型，边收边把文本片段吐给上层，流结束后打包完整结果，出错就分类抛出。它只负责这一次，不负责重试。
     async def _stream_once(self, request: ApiMessageRequest) -> AsyncIterator[ApiStreamEvent]:
         """Single attempt at streaming a message."""
+        #参数定义:模型、消息列表、系统提示、最大 token 数、工具等
         params: dict[str, Any] = {
             "model": request.model,
             "messages": [message.to_api_param() for message in request.messages],
@@ -210,6 +220,7 @@ class AnthropicApiClient:
         if request.system_prompt:
             params["system"] = request.system_prompt
         if self._claude_oauth:
+            #前面弄个归属声名
             attribution = claude_attribution_header()
             params["system"] = (
                 f"{attribution}\n{params['system']}"
@@ -236,9 +247,11 @@ class AnthropicApiClient:
             stream_api = self._client.beta.messages if self._claude_oauth else self._client.messages
             async with stream_api.stream(**params) as stream:
                 async for event in stream:
+                    #过滤掉不是文本增量的事件
                     if getattr(event, "type", None) != "content_block_delta":
                         continue
                     delta = getattr(event, "delta", None)
+                    #过滤掉不是文本增量的事件
                     if getattr(delta, "type", None) != "text_delta":
                         continue
                     text = getattr(delta, "text", "")

@@ -18,9 +18,9 @@ if TYPE_CHECKING:
 class ToolExecutionContext:
     """Shared execution context for tool invocations."""
 
-    cwd: Path
-    metadata: dict[str, Any] = field(default_factory=dict)
-    hook_executor: HookExecutor | None = None
+    cwd: Path   #工作目录
+    metadata: dict[str, Any] = field(default_factory=dict)  #共享字典状态，field(default_factory=dict) 可以让它每次在生成一个实例的时候生成一个属于自己的新的空字典
+    hook_executor: HookExecutor | None = None   #钩子执行器
 
 
 @dataclass(frozen=True)
@@ -45,7 +45,7 @@ class BaseTool(ABC):
 
     def is_read_only(self, arguments: BaseModel) -> bool:
         """Return whether the invocation is read-only."""
-        del arguments
+        del arguments   #明确告诉解释器和阅读代码的人："这个参数我故意不用，不是忘了用"
         return False
 
     def to_api_schema(self) -> dict[str, Any]:

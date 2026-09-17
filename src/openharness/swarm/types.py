@@ -1,4 +1,5 @@
 """Swarm backend type definitions."""
+#这份文件是 swarm（多智能体协作）后端的类型定义文件，共 398 行，全是纯类型定义（dataclass + Protocol），没有业务逻辑。
 
 from __future__ import annotations
 
@@ -43,6 +44,7 @@ class CreatePaneResult:
     """Whether this is the first teammate pane (affects layout strategy)."""
 
 
+#PaneBackend 是一个终端面板管理协议，用于在 Swarm 模式下为每个 AI 队友创建、管理和可视化独立的终端面板（支持 tmux 和 iTerm2
 @runtime_checkable
 class PaneBackend(Protocol):
     """Protocol for pane management backends (tmux / iTerm2).
@@ -222,7 +224,7 @@ class BackendDetectionResult:
     backend: str
     """Backend type string (e.g. ``"tmux"``, ``"in_process"``)."""
 
-    is_native: bool
+    is_native: bool#表示当前进程是否运行在该后端的原生环境中
     """True if running inside the backend's own environment."""
 
     needs_setup: bool = False
@@ -361,20 +363,24 @@ class TeammateExecutor(Protocol):
     Abstracts spawn/messaging/shutdown across subprocess, in-process, and tmux backends.
     """
 
-    type: BackendType
+    type: BackendType   #声明类型
 
+    #检查当前后端在当前系统上是否可用
     def is_available(self) -> bool:
         """Check if this backend is available on the system."""
         ...
 
+    #实际启动一个新的队友进程/线程/会话
     async def spawn(self, config: TeammateSpawnConfig) -> SpawnResult:
         """Spawn a new teammate with the given configuration."""
         ...
 
+    #通过标准输入（stdin）向正在运行的队友发送一条消息
     async def send_message(self, agent_id: str, message: TeammateMessage) -> None:
         """Send a message to a running teammate via stdin."""
         ...
 
+    #终止一个正在运行的队友
     async def shutdown(self, agent_id: str, *, force: bool = False) -> bool:
         """Terminate a teammate.
 

@@ -1,4 +1,5 @@
 """Coordinator mode detection and orchestration support."""
+#协调器模式（Coordinator Mode）的核心配置模块
 
 from __future__ import annotations
 
@@ -76,6 +77,7 @@ def get_team_registry() -> TeamRegistry:
 # ---------------------------------------------------------------------------
 
 
+#任务结果核心数据结构
 @dataclass
 class TaskNotification:
     """Structured result from a completed agent task."""

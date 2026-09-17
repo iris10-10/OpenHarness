@@ -33,13 +33,15 @@ from openharness.skills.types import SkillDefinition
 logger = logging.getLogger(__name__)
 
 
+#获取用户级插件目录
 def get_user_plugins_dir() -> Path:
     """Return the user plugin directory."""
     path = get_config_dir() / "plugins"
-    path.mkdir(parents=True, exist_ok=True)
+    path.mkdir(parents=True, exist_ok=True)#确保路径真的存在
     return path
 
 
+#获取项目级插件目录
 def get_project_plugins_dir(cwd: str | Path) -> Path:
     """Return the project plugin directory."""
     path = Path(cwd).resolve() / ".openharness" / "plugins"
@@ -47,6 +49,7 @@ def get_project_plugins_dir(cwd: str | Path) -> Path:
     return path
 
 
+#查找插件清单文件
 def _find_manifest(plugin_dir: Path) -> Path | None:
     """Find plugin.json in standard or .claude-plugin/ locations."""
     for candidate in [
@@ -58,6 +61,7 @@ def _find_manifest(plugin_dir: Path) -> Path | None:
     return None
 
 
+#扫描文件系统，发现所有包含有效清单文件（plugin.json）的插件目录，并返回它们的路径列表。
 def discover_plugin_paths(cwd: str | Path, extra_roots: Iterable[str | Path] | None = None) -> list[Path]:
     """Find plugin directories from user and project locations."""
     roots = [get_user_plugins_dir(), get_project_plugins_dir(cwd)]
@@ -85,6 +89,7 @@ def discover_plugin_paths_for_settings(
 ) -> list[Path]:
     """Find plugin directories that are permitted by the active settings."""
     roots = [get_user_plugins_dir()]
+    #根据权限构建根目录列表
     if getattr(settings, "allow_project_plugins", False):
         roots.append(get_project_plugins_dir(cwd))
     if extra_roots:
@@ -104,9 +109,11 @@ def discover_plugin_paths_for_settings(
     return paths
 
 
+#根据配置和工作目录，从磁盘加载所有可用的插件，并返回成功加载的插件列表
 def load_plugins(settings, cwd: str | Path, extra_roots: Iterable[str | Path] | None = None) -> list[LoadedPlugin]:
     """Load plugins from disk."""
-    project_plugins_dir = get_project_plugins_dir(cwd)
+    project_plugins_dir = get_project_plugins_dir(cwd)  #获取项目插件目录
+    #你没有明确开启插件功能，但系统发现你电脑里确实有插件文件，那就发出警告提醒你，而不是直接加载它们
     if not getattr(settings, "allow_project_plugins", False) and any(
         path.is_dir() and _find_manifest(path) is not None for path in sorted(project_plugins_dir.iterdir())
     ):
@@ -115,7 +122,7 @@ def load_plugins(settings, cwd: str | Path, extra_roots: Iterable[str | Path] | 
             "Set allow_project_plugins=true if you trust this workspace.",
             project_plugins_dir,
         )
-    plugins: list[LoadedPlugin] = []
+    plugins: list[LoadedPlugin] = []#用于存储最终成功加载的插件实例
     for path in discover_plugin_paths_for_settings(settings, cwd, extra_roots=extra_roots):
         plugin = load_plugin(path, settings.enabled_plugins)
         if plugin is not None:
@@ -123,16 +130,19 @@ def load_plugins(settings, cwd: str | Path, extra_roots: Iterable[str | Path] | 
     return plugins
 
 
+#将磁盘上的一个插件目录，转换为内存中可用的 LoadedPlugin 运行时对象
 def load_plugin(path: Path, enabled_plugins: dict[str, bool]) -> LoadedPlugin | None:
     """Load one plugin directory."""
     manifest_path = _find_manifest(path)
     if manifest_path is None:
         return None
     try:
+        #读取 plugin.json 文件内容
         manifest = PluginManifest.model_validate_json(manifest_path.read_text(encoding="utf-8"))
     except Exception as exc:
         logger.debug("Failed to load plugin manifest from %s: %s", manifest_path, exc)
         return None
+    #读取状态，判断插件是否启用
     enabled = enabled_plugins.get(manifest.name, manifest.enabled_by_default)
 
     skills = _load_plugin_skills(path / manifest.skills_dir)
@@ -162,6 +172,7 @@ def load_plugin(path: Path, enabled_plugins: dict[str, bool]) -> LoadedPlugin | 
     )
 
 
+#解析 Markdown 文件开头的 YAML frontmatter
 def _parse_frontmatter(content: str, path: Path) -> tuple[dict[str, Any], str]:
     if not content.startswith("---\n"):
         return {}, content

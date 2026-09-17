@@ -44,8 +44,8 @@ class MailboxMessage:
     sender: str
     recipient: str
     payload: dict[str, Any]
-    timestamp: float
-    read: bool = False
+    timestamp: float    #记录消息发送时间
+    read: bool = False  #消息是否已被读取
 
     # ------------------------------------------------------------------
     # Serialization helpers
@@ -162,8 +162,10 @@ class TeammateMailbox:
 
         def _read_all() -> list[MailboxMessage]:
             messages: list[MailboxMessage] = []
+            #查找目录下所有 .json 文件
             for path in sorted(inbox.glob("*.json")):
                 # Skip lock files and temp files
+                #跳过所有隐藏文件
                 if path.name.startswith(".") or path.name.endswith(".tmp"):
                     continue
                 try:
@@ -180,6 +182,7 @@ class TeammateMailbox:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _read_all)
 
+    #把一条消息从"未读"变成"已读"
     async def mark_read(self, message_id: str) -> None:
         """Mark the message with *message_id* as read (in-place update)."""
         inbox = self.get_mailbox_dir()
@@ -466,6 +469,7 @@ def is_sandbox_permission_response(msg: MailboxMessage) -> dict[str, Any] | None
 # ---------------------------------------------------------------------------
 
 
+#专门用来接收 TypeScript 格式的消息字典，自动识别消息类型，然后转换成 Python 的 MailboxMessage 对象并写入接收者的邮箱
 async def write_to_mailbox(
     recipient_name: str,
     message: dict[str, Any],

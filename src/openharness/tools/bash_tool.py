@@ -33,6 +33,7 @@ class BashTool(BaseTool):
 
     async def execute(self, arguments: BashToolInput, context: ToolExecutionContext) -> ToolResult:
         cwd = Path(arguments.cwd).expanduser() if arguments.cwd else context.cwd
+        #在真正执行危险操作前，先做一轮校验
         preflight_error = _preflight_interactive_command(arguments.command)
         if preflight_error is not None:
             return ToolResult(
@@ -42,17 +43,18 @@ class BashTool(BaseTool):
             )
         process: asyncio.subprocess.Process | None = None
         try:
+            #创建子进程
             process = await create_shell_subprocess(
                 arguments.command,
                 cwd=cwd,
-                prefer_pty=True,
-                stdin=asyncio.subprocess.DEVNULL,
+                prefer_pty=True,    #优先使用伪终端
+                stdin=asyncio.subprocess.DEVNULL,   #标准输入指向空设备
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
+                stderr=asyncio.subprocess.STDOUT,   #错误输出合并到标准输出
             )
-        except SandboxUnavailableError as exc:
+        except SandboxUnavailableError as exc:  #沙盒不可用
             return ToolResult(output=str(exc), is_error=True)
-        except asyncio.CancelledError:
+        except asyncio.CancelledError:  #任务取消时终止进程并重新抛出
             if process is not None:
                 await _terminate_process(process, force=False)
             raise
@@ -60,9 +62,9 @@ class BashTool(BaseTool):
         try:
             await asyncio.wait_for(process.wait(), timeout=arguments.timeout_seconds)
         except asyncio.TimeoutError:
-            output_buffer = await _drain_available_output(process.stdout)
-            await _terminate_process(process, force=True)
-            output_buffer.extend(await _read_remaining_output(process))
+            output_buffer = await _drain_available_output(process.stdout)   #读取已有输出
+            await _terminate_process(process, force=True)   #强制终止
+            output_buffer.extend(await _read_remaining_output(process))  # 读取剩余输出
             return ToolResult(
                 output=_format_timeout_output(
                     output_buffer,
@@ -76,6 +78,7 @@ class BashTool(BaseTool):
             await _terminate_process(process, force=False)
             raise
 
+        #正常完成
         output_buffer = await _read_remaining_output(process)
         text = _format_output(output_buffer)
         return ToolResult(
@@ -85,13 +88,16 @@ class BashTool(BaseTool):
         )
 
 
+#实现了可靠的进程终止机制
 async def _terminate_process(process: asyncio.subprocess.Process, *, force: bool) -> None:
     if process.returncode is not None:
         return
+    #强制终止
     if force:
         process.kill()
         await process.wait()
         return
+    #优雅终止
     process.terminate()
     try:
         await asyncio.wait_for(process.wait(), timeout=2.0)
@@ -132,6 +138,7 @@ async def _drain_available_output(
         output_buffer.extend(chunk)
 
 
+#UTF-8 解码 + \r\n→\n + strip + 超 12000 字截断
 def _format_output(output_buffer: bytearray) -> str:
     text = output_buffer.decode("utf-8", errors="replace").replace("\r\n", "\n").strip()
     if not text:
@@ -141,6 +148,7 @@ def _format_output(output_buffer: bytearray) -> str:
     return text
 
 
+#拼接超时提示 + 部分输出 + 交互命令 hint
 def _format_timeout_output(output_buffer: bytearray, *, command: str, timeout_seconds: int) -> str:
     parts = [f"Command timed out after {timeout_seconds} seconds."]
     text = _format_output(output_buffer)
@@ -203,6 +211,8 @@ def _looks_like_interactive_scaffold(lowered_command: str) -> bool:
     )
 
 
+#检测命令的输出文本是否包含常见的交互式提示关键词。
+#就是是否需要用户输入
 def _looks_like_prompt(output: str) -> bool:
     if not output:
         return False

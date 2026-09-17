@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 import typer
 
 __version__ = "0.1.9"
-
+#停用词，常见的无实际意义的词的集合
 _PREVIEW_STOPWORDS = {
     "a",
     "an",
@@ -42,6 +42,7 @@ _PREVIEW_STOPWORDS = {
 }
 
 
+#一个安全的文本截断函数，确保输出长度不超过指定限制。
 def _safe_short(text: str, *, limit: int = 140) -> str:
     normalized = " ".join(text.split())
     if len(normalized) <= limit:
@@ -49,16 +50,18 @@ def _safe_short(text: str, *, limit: int = 140) -> str:
     return normalized[: limit - 3] + "..."
 
 
+#tool_schema是一个字典，表示工具的输入模式。该函数从中提取必需和可选参数，并返回一个包含这些参数的字典。规范json模式通常用于定义工具的输入要求，包括哪些参数是必需的，哪些是可选的。该函数通过检查输入模式中的属性和必需字段，生成一个简化的预览，便于用户了解工具的使用方式。
+#从 JSON Schema 格式的工具定义中，提取并分类出"必填参数"和"可选参数"。
 def _schema_argument_preview(tool_schema: dict[str, object]) -> dict[str, object]:
     input_schema = tool_schema.get("input_schema")
     if not isinstance(input_schema, dict):
         return {"required_args": [], "optional_args": []}
-    properties = input_schema.get("properties")
+    properties = input_schema.get("properties")#properties是一个字典，包含工具输入模式中定义的所有参数及其属性。
     if not isinstance(properties, dict):
         return {"required_args": [], "optional_args": []}
-    required_raw = input_schema.get("required")
+    required_raw = input_schema.get("required")#required_raw里是必填的参数
     required = (
-        sorted(str(name) for name in required_raw if isinstance(name, str))
+        sorted(str(name) for name in required_raw if isinstance(name, str))#排序一下保证每次输出的顺序一致
         if isinstance(required_raw, list)
         else []
     )
@@ -66,7 +69,10 @@ def _schema_argument_preview(tool_schema: dict[str, object]) -> dict[str, object
     return {"required_args": required, "optional_args": optional}
 
 
+#从 MCP 配置中提取传输协议信息，生成一个统一的预览字典，描述"如何连接到 MCP 服务"
 def _mcp_transport_preview(config: object) -> dict[str, str]:
+    #检查config对象是否有"type"属性
+    #type是MCP传输协议的类型，可以是stdio、http、ws等
     if hasattr(config, "type"):
         transport = str(getattr(config, "type") or "unknown")
     elif isinstance(config, dict):
@@ -74,6 +80,7 @@ def _mcp_transport_preview(config: object) -> dict[str, str]:
     else:
         transport = "unknown"
 
+    #command是stdio传输协议的命令，args是命令的参数
     if transport == "stdio":
         command = getattr(config, "command", None) if not isinstance(config, dict) else config.get("command")
         args = getattr(config, "args", None) if not isinstance(config, dict) else config.get("args")
@@ -86,6 +93,7 @@ def _mcp_transport_preview(config: object) -> dict[str, str]:
     return {"transport": transport, "target": "configured"}
 
 
+#用于验证MCP服务器配置是否有效，检查关键字段是否存在、路径是否正确、URL 格式是否合法。
 def _validate_mcp_server(name: str, config: object) -> dict[str, object]:
     preview = _mcp_transport_preview(config)
     issues: list[str] = []
@@ -94,11 +102,13 @@ def _validate_mcp_server(name: str, config: object) -> dict[str, object]:
 
     if transport == "stdio":
         command = getattr(config, "command", None) if not isinstance(config, dict) else config.get("command")
+        #cwd是stdio传输协议的当前工作目录
         raw_cwd = getattr(config, "cwd", None) if not isinstance(config, dict) else config.get("cwd")
         command_text = str(command or "").strip()
         if not command_text:
             issues.append("missing command")
         elif shutil.which(command_text) is None:
+            #找这个命令在不在系统路径（PATH）里，看系统能不能认出并执行它
             issues.append(f"command not found in PATH: {command_text}")
         if raw_cwd:
             resolved_cwd = Path(str(raw_cwd)).expanduser()
@@ -108,6 +118,7 @@ def _validate_mcp_server(name: str, config: object) -> dict[str, object]:
         raw_url = getattr(config, "url", None) if not isinstance(config, dict) else config.get("url")
         parsed = urlparse(str(raw_url or "").strip())
         expected = {"http", "https"} if transport == "http" else {"ws", "wss"}
+        #检查是否在允许的列表里以及有没有域名或IP地址
         if parsed.scheme not in expected or not parsed.netloc:
             issues.append(f"invalid {transport} url: {raw_url}")
 
@@ -121,7 +132,9 @@ def _validate_mcp_server(name: str, config: object) -> dict[str, object]:
     }
 
 
+#检查命令是否只只读或可变
 def _dry_run_command_behavior(name: str) -> dict[str, str]:
+    #只读命令
     read_only = {
         "help",
         "version",
@@ -144,6 +157,7 @@ def _dry_run_command_behavior(name: str) -> dict[str, str]:
         "keybindings",
         "files",
     }
+    #修改命令，会改东西
     mutating = {
         "clear",
         "compact",
@@ -201,13 +215,16 @@ def _dry_run_command_behavior(name: str) -> dict[str, str]:
     }
 
 
+#将文本转换为 token 列表，用于匹配和推荐命令
 def _tokenize_preview_text(text: str) -> list[str]:
     lowered = text.lower()
     ascii_tokens = re.findall(r"[a-z0-9_/-]+", lowered)
     cjk_tokens = [char for char in lowered if "\u4e00" <= char <= "\u9fff"]
+    #去重
     seen: set[str] = set()
     ordered: list[str] = []
     for token in [*ascii_tokens, *cjk_tokens]:
+        #对token进行归一化处理，去掉-、_、/等特殊字符
         normalized = token.strip("-_/")
         if len(normalized) < 2 and normalized not in cjk_tokens:
             continue
@@ -219,6 +236,7 @@ def _tokenize_preview_text(text: str) -> list[str]:
     return ordered
 
 
+#判断用户输入的命令是否匹配推荐的命令
 def _score_candidate_match(prompt: str, *fields: str) -> tuple[int, list[str]]:
     prompt_lower = prompt.lower()
     prompt_tokens = _tokenize_preview_text(prompt)
@@ -234,6 +252,7 @@ def _score_candidate_match(prompt: str, *fields: str) -> tuple[int, list[str]]:
             if len(reasons) < 3:
                 reasons.append(token)
     primary_name = fields[0].lower() if fields and fields[0] else ""
+    #因为field[0]是很重要的候选词，所以给它加一个10分的分数
     if primary_name and primary_name in prompt_lower:
         score += 10
         if fields[0] not in reasons:
@@ -241,6 +260,7 @@ def _score_candidate_match(prompt: str, *fields: str) -> tuple[int, list[str]]:
     return score, reasons[:3]
 
 
+#把命令整合成一个字典，包含命令名、描述、匹配分数、匹配原因
 def _candidate_entry(name: str, description: str, *, score: int, reasons: list[str]) -> dict[str, object]:
     return {
         "name": name,
@@ -250,6 +270,9 @@ def _candidate_entry(name: str, description: str, *, score: int, reasons: list[s
     }
 
 
+#*表示后面的参数传参时必须使用key=value的格式
+#command_entries是一个包含命令名和描述的列表，用于推荐命令
+#根据提示词推荐技能、工具、命令
 def _recommend_preview_candidates(
     prompt: str | None,
     *,
@@ -260,6 +283,7 @@ def _recommend_preview_candidates(
     if not prompt:
         return {"skills": [], "tools": [], "commands": []}
     stripped = prompt.strip()
+    #/开头的命令不推荐技能和工具，因为它们是slash命令(快捷指令)
     if not stripped or stripped.startswith("/"):
         return {"skills": [], "tools": [], "commands": []}
 
@@ -320,6 +344,7 @@ def _recommend_preview_candidates(
                 )
             )
 
+    #这是在给三种候选列表（技能、工具、命令）排序，规则是：分数高的排前面，分数一样的按名字字母顺序排。
     skill_matches.sort(key=lambda entry: (-int(entry["score"]), str(entry["name"])))
     tool_matches.sort(key=lambda entry: (-int(entry["score"]), str(entry["name"])))
     command_matches.sort(key=lambda entry: (-int(entry["score"]), str(entry["name"])))
@@ -330,6 +355,9 @@ def _recommend_preview_candidates(
     }
 
 
+#entrypoint是一个字典，包含了提示词的类型、命令名、描述、匹配分数、匹配原因等信息
+#validation是一个字典，包含了提示词的验证结果，比如api_client是否成功、mcp_errors是否有错误等信息
+#根据提示词的类型和验证结果，判断提示词是否可以运行
 def _evaluate_dry_run_readiness(
     *,
     prompt: str | None,
@@ -340,6 +368,7 @@ def _evaluate_dry_run_readiness(
     reasons: list[str] = []
     next_actions: list[str] = []
 
+    #kind就是其类型
     if entrypoint.get("kind") == "unknown_slash_command":
         level = "blocked"
         reasons.append("The prompt starts with '/' but does not match any registered slash command.")
@@ -393,19 +422,20 @@ def _evaluate_dry_run_readiness(
     return {"level": level, "reasons": reasons, "next_actions": deduped_actions}
 
 
+#把整个会话的零件装配一遍但不启动，返回一个 JSON 告诉你"如果真跑会用到什么配置、什么工具、认证通没通、MCP 坏没坏、能不能直接跑"。
 def _build_dry_run_preview(
     *,
     prompt: str | None,
-    cwd: str,
+    cwd: str,#目录
     model: str | None,
-    max_turns: int | None,
+    max_turns: int | None,#对话最大轮次
     base_url: str | None,
     system_prompt: str | None,
     append_system_prompt: str | None,
     api_key: str | None,
     api_format: str | None,
-    permission_mode: str | None,
-    effort: str | None = None,
+    permission_mode: str | None,#权限模式，"open"或"closed"，默认"open"
+    effort: str | None = None,#模型调用努力等级，"low"、"medium"、"high"，默认"medium"
 ) -> dict[str, object]:
     from openharness.api.provider import auth_status, detect_provider
     from openharness.commands import create_default_command_registry
@@ -417,7 +447,9 @@ def _build_dry_run_preview(
     from openharness.tools import create_default_tool_registry
     from openharness.ui.runtime import _resolve_api_client_from_settings
 
+    # 解析目录路径，把cwd转换为绝对路径，处理用户家目录和相对路径
     resolved_cwd = str(Path(cwd).expanduser().resolve())
+    # 加载配置文件并合并CLI覆盖
     settings = load_settings().merge_cli_overrides(
         model=model,
         max_turns=max_turns,
@@ -597,6 +629,7 @@ def _build_dry_run_preview(
     return preview
 
 
+#格式化成人类可读的文本输出到终端
 def _format_dry_run_preview(preview: dict[str, object]) -> str:
     settings = preview.get("settings") if isinstance(preview.get("settings"), dict) else {}
     validation = preview.get("validation") if isinstance(preview.get("validation"), dict) else {}
@@ -742,6 +775,7 @@ def _format_dry_run_preview(preview: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
+#打印版本号
 def _version_callback(value: bool) -> None:
     if value:
         print(f"openharness {__version__}")
@@ -754,8 +788,11 @@ app = typer.Typer(
         "Oh my Harness! An AI-powered coding assistant.\n\n"
         "Starts an interactive session by default, use -p/--print for non-interactive output."
     ),
+    # 不添加自动补全
     add_completion=False,
+    #可以渲染富文本的模式，支持颜色、粗体、斜体等
     rich_markup_mode="rich",
+    #如果没有子命令，仍然会调用主函数，就是输入oh而不加任何参数时，仍然会执行主函数
     invoke_without_command=True,
 )
 
@@ -764,14 +801,15 @@ app = typer.Typer(
 # Subcommands
 # ---------------------------------------------------------------------------
 
-mcp_app = typer.Typer(name="mcp", help="Manage MCP servers")
-plugin_app = typer.Typer(name="plugin", help="Manage plugins")
-auth_app = typer.Typer(name="auth", help="Manage authentication")
-provider_app = typer.Typer(name="provider", help="Manage provider profiles")
-config_app = typer.Typer(name="config", help="Show or update settings")
-cron_app = typer.Typer(name="cron", help="Manage cron scheduler and jobs")
-autopilot_app = typer.Typer(name="autopilot", help="Manage repo autopilot")
+mcp_app = typer.Typer(name="mcp", help="Manage MCP servers")#管理MCP服务器
+plugin_app = typer.Typer(name="plugin", help="Manage plugins")#管理插件
+auth_app = typer.Typer(name="auth", help="Manage authentication")#管理认证
+provider_app = typer.Typer(name="provider", help="Manage provider profiles")#管理提供方配置
+config_app = typer.Typer(name="config", help="Show or update settings")#显示或更新配置
+cron_app = typer.Typer(name="cron", help="Manage cron scheduler and jobs")#管理cron调度器和任务
+autopilot_app = typer.Typer(name="autopilot", help="Manage repo autopilot")#管理仓库自动ilot
 
+#添加子命令，挂载到主应用上
 app.add_typer(mcp_app)
 app.add_typer(plugin_app)
 app.add_typer(auth_app)
@@ -783,6 +821,7 @@ app.add_typer(autopilot_app)
 
 # ---- mcp subcommands ----
 
+#载配置和插件，合并出所有 MCP 服务器配置
 @mcp_app.command("list")
 def mcp_list() -> None:
     """List configured MCP servers."""
@@ -801,6 +840,7 @@ def mcp_list() -> None:
         print(f"  {name}: {transport}")
 
 
+#添加新的 MCP 服务器配置，用来连接新的
 @mcp_app.command("add")
 def mcp_add(
     name: str = typer.Argument(..., help="Server name"),
@@ -822,6 +862,7 @@ def mcp_add(
     print(f"Added MCP server: {name}")
 
 
+#删除已配置的 MCP 服务器
 @mcp_app.command("remove")
 def mcp_remove(
     name: str = typer.Argument(..., help="Server name to remove"),
@@ -1266,8 +1307,10 @@ _AUTH_SOURCE_LABELS: dict[str, str] = {
 }
 
 
+#判断当前环境是否支持交互式终端
 def _can_use_questionary() -> bool:
     """Return True when a real interactive terminal is available."""
+    #这行代码是在检查标准输入和标准输出是否连接到一个真实的终端
     if not (sys.stdin.isatty() and sys.stdout.isatty()):
         return False
     if sys.stdin is not sys.__stdin__ or sys.stdout is not sys.__stdout__:
@@ -1279,6 +1322,7 @@ def _can_use_questionary() -> bool:
     return True
 
 
+#
 def _select_with_questionary(
     title: str,
     options: list[tuple[str, str]],
@@ -2177,8 +2221,10 @@ def provider_remove(
 # Main command
 # ---------------------------------------------------------------------------
 
+#如果没有子命令，仍然会调用主函数，就是输入oh而不加任何参数时，仍然会执行主函数
 @app.callback(invoke_without_command=True)
 def main(
+    #里面装着本次命令执行时的各种环境和参数信息。
     ctx: typer.Context,
     version: bool = typer.Option(
         False,
@@ -2366,12 +2412,14 @@ def main(
     ),
 ) -> None:
     """Start an interactive session or run a single prompt."""
+    #如果用户输入了子命令，就直接返回，不执行主函数
     if ctx.invoked_subcommand is not None:
         return
 
     import asyncio
     import logging
 
+    #如果用户输入了--debug参数，就开启调试模式
     if debug:
         logging.basicConfig(
             level=logging.DEBUG,
@@ -2383,10 +2431,12 @@ def main(
         lvl = getattr(logging, os.environ["OPENHARNESS_LOG_LEVEL"].upper(), logging.WARNING)
         logging.basicConfig(level=lvl, format="%(asctime)s [%(name)s] %(levelname)s %(message)s", stream=sys.stderr)
 
+    #如果用户输入了--dangerously-skip-permissions参数，就开启过权限检查模式
     if dangerously_skip_permissions:
         permission_mode = "full_auto"
 
     # Apply --theme override to settings
+    #加载用户输入的--theme参数，就将主题保存到配置文件中
     if theme:
         from openharness.config.settings import load_settings, save_settings
 
@@ -2394,12 +2444,15 @@ def main(
         settings.theme = theme
         save_settings(settings)
 
+    #延迟导入
     from openharness.ui.app import run_print_mode, run_repl, run_task_worker
 
+    #冲突检查
     if dry_run and (continue_session or resume is not None):
         print("Error: --dry-run does not support --continue/--resume yet.", file=sys.stderr)
         raise typer.Exit(1)
 
+    # --dry-run 模式的完整处理流程:校验参数 → 组装预览 → 按格式输出 → 结束。
     if dry_run:
         prompt = print_mode.strip() if print_mode is not None else None
         if print_mode is not None and not prompt:
@@ -2418,6 +2471,7 @@ def main(
             permission_mode=permission_mode,
             effort=effort,
         )
+        #根据用户输入的--output-format参数，就将预览结果输出到不同的格式中
         effective_output_format = output_format or "text"
         if effective_output_format == "text":
             print(_format_dry_run_preview(preview))
@@ -2465,8 +2519,8 @@ def main(
                 else:
                     print("Invalid selection.", file=sys.stderr)
                     raise typer.Exit(1)
-            except ValueError:
-                session_data = load_session_by_id(cwd, choice)
+            except ValueError:# # int() 转换失败说明不是数字
+                session_data = load_session_by_id(cwd, choice)#判断出用户输的不是数字,是会话 ID
             if session_data is None:
                 print(f"Session not found: {choice}", file=sys.stderr)
                 raise typer.Exit(1)
@@ -2500,7 +2554,9 @@ def main(
         if not prompt:
             print("Error: -p/--print requires a prompt value, e.g. -p 'your prompt'", file=sys.stderr)
             raise typer.Exit(1)
+        #创建一个异步事件循环，运行 run_print_mode 函数，并传入用户输入的参数
         asyncio.run(
+            #run_print_mode 是非交互模式的执行器——提交问题、流式输出、结束
             run_print_mode(
                 prompt=prompt,
                 output_format=output_format or "text",
@@ -2520,6 +2576,7 @@ def main(
 
     if task_worker:
         asyncio.run(
+            #后台无头工作进程——给 OpenHarness 内部的"多 Agent 协作"用的,不是给人在终端里直接用的。
             run_task_worker(
                 cwd=cwd,
                 model=model,
@@ -2535,6 +2592,7 @@ def main(
         return
 
     asyncio.run(
+        #交互式会话的入口——就是我们最常用的 oh 直接进去那个聊天界面。
         run_repl(
             prompt=None,
             cwd=cwd,

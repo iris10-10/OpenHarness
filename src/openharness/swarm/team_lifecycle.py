@@ -8,6 +8,7 @@ and a full set of CRUD helpers matching the TS teamHelpers.ts API.
 The TeamLifecycleManager can work alongside the in-memory TeamRegistry
 in coordinator_mode.py without modifying that module.
 """
+#核心职责：把团队元数据以 JSON 文件的形式存储到磁盘上，并提供完整的增删改查（CRUD）能力
 
 from __future__ import annotations
 
@@ -31,6 +32,7 @@ from openharness.swarm.types import BackendType
 # ---------------------------------------------------------------------------
 
 
+#把所有非字母数字的字符都替换成连字符-，然后转成小写
 def sanitize_name(name: str) -> str:
     """Replace all non-alphanumeric characters with hyphens and lowercase.
 
@@ -54,6 +56,7 @@ def sanitize_agent_name(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+#这几个文件夹大家随便改，不用每次都找我审批，但谁加的、什么时候加的我都记着账。
 @dataclass
 class AllowedPath:
     """A path that all team members can edit without asking for permission."""
@@ -88,6 +91,7 @@ class AllowedPath:
         )
 
 
+#每个智能体是什么、用什么跑、在哪跑、权限如何、当前状态怎样等
 @dataclass
 class TeamMember:
     """A member of a swarm team."""
@@ -260,9 +264,10 @@ class TeamFile:
     # Persistence
     # ------------------------------------------------------------------
 
+    #保存
     def save(self, path: Path) -> None:
         """Atomically write this team file to *path*."""
-        path.parent.mkdir(parents=True, exist_ok=True)
+        path.parent.mkdir(parents=True, exist_ok=True)#确保目录存在
         tmp = path.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
         tmp.rename(path)
@@ -301,6 +306,7 @@ def get_team_file_path(team_name: str) -> Path:
 # ---------------------------------------------------------------------------
 
 
+#读取团队文件
 def read_team_file(team_name: str) -> TeamFile | None:
     """Read and return the TeamFile for *team_name*, or ``None`` if missing.
 
@@ -343,6 +349,7 @@ async def write_team_file_async(team_name: str, team_file: TeamFile) -> None:
 # ---------------------------------------------------------------------------
 
 
+#过 agent_id 或 name 从团队文件中移除一个队友。
 def remove_teammate_from_team_file(
     team_name: str,
     identifier: dict[str, str | None],
@@ -365,6 +372,7 @@ def remove_teammate_from_team_file(
     if not team_file:
         return False
 
+    #记录删除前的成员数量
     original_len = len(team_file.members)
     to_remove = [
         k
@@ -381,12 +389,14 @@ def remove_teammate_from_team_file(
     return True
 
 
+#记录用户隐藏了哪些终端面板，下次打开程序时恢复隐藏状态
 def add_hidden_pane_id(team_name: str, pane_id: str) -> bool:
     """Add *pane_id* to the hidden panes list in the team file.
 
     Returns:
         ``True`` if successful, ``False`` if the team does not exist.
     """
+    #调用 read_team_file 读取团队配置，传入团队名称
     team_file = read_team_file(team_name)
     if not team_file:
         return False
@@ -471,6 +481,7 @@ def remove_member_by_agent_id(team_name: str, agent_id: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
+#修改团队中某个成员的权限模式
 def set_member_mode(
     team_name: str,
     member_name: str,
@@ -531,6 +542,7 @@ def sync_teammate_mode(
         set_member_mode(team_name, agent_name, mode)
 
 
+#批量更新
 def set_multiple_member_modes(
     team_name: str,
     mode_updates: list[dict[str, str]],
@@ -606,6 +618,7 @@ async def set_member_active(
 # Session cleanup tracking
 # ---------------------------------------------------------------------------
 
+#用来记录当前会话中已经创建过的团队名称
 _session_created_teams: set[str] = set()
 
 
@@ -624,6 +637,7 @@ def unregister_team_for_session_cleanup(team_name: str) -> None:
     _session_created_teams.discard(team_name)
 
 
+#杀死某个团队的所有队友终端进程
 async def _kill_orphaned_teammate_panes(team_name: str) -> None:
     """Best-effort kill of all pane-backed teammate panes for a team.
 
@@ -644,7 +658,7 @@ async def _kill_orphaned_teammate_panes(team_name: str) -> None:
     pane_members = [
         m
         for m in team_file.members.values()
-        if m.name != "team-lead"
+        if m.name != "team-lead"#不是团队领导（领导自己负责自己，不在这里杀）
         and m.tmux_pane_id
         and m.backend_type
         and is_pane_backend(m.backend_type)
@@ -697,6 +711,7 @@ async def cleanup_session_teams() -> None:
 # ---------------------------------------------------------------------------
 
 
+#工作树清理
 async def _destroy_worktree(worktree_path: str) -> None:
     """Best-effort removal of a git worktree.
 
@@ -743,6 +758,7 @@ async def _destroy_worktree(worktree_path: str) -> None:
 # ---------------------------------------------------------------------------
 
 
+#目录清理
 async def cleanup_team_directories(team_name: str) -> None:
     """Clean up team and task directories for *team_name*.
 
@@ -777,6 +793,7 @@ async def cleanup_team_directories(team_name: str) -> None:
 # ---------------------------------------------------------------------------
 
 
+#管理团队的生命周期（创建、读取、更新、删除）
 class TeamLifecycleManager:
     """Manage the on-disk lifecycle of swarm teams.
 

@@ -1,4 +1,5 @@
 """Plugin runtime types."""
+#定义了"插件加载完成后，在内存里长什么样"的数据结构
 
 from __future__ import annotations
 

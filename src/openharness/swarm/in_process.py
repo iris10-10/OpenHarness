@@ -49,6 +49,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
+#双信号的中止控制器，用于同进程内的队友（teammate）任务
+#提供两种终止方式
 class TeammateAbortController:
     """Dual-signal abort controller for in-process teammates.
 
@@ -74,6 +76,7 @@ class TeammateAbortController:
         """Return True if either cancellation signal has been set."""
         return self.cancel_event.is_set() or self.force_cancel.is_set()
 
+    #用于发起取消请求
     def request_cancel(self, reason: str | None = None, *, force: bool = False) -> None:
         """Request cancellation of the teammate.
 
@@ -117,6 +120,7 @@ class TeammateContext:
     Stored in a :data:`ContextVar` so that each asyncio Task sees its own
     copy without any locking.
     """
+    #个类保存每个队友（teammate）的独立状态，用于支持多个代理并发运行
 
     agent_id: str
     """Unique agent identifier (``agentName@teamName``)."""
@@ -162,6 +166,7 @@ class TeammateContext:
     total_tokens: int = 0
     """Cumulative token count (input + output) across all query turns."""
 
+    #转换器，让老方式也能用新方法
     # Backwards-compatible shim so existing code that reads ``cancel_event``
     # continues to work without modification.
     @property
@@ -170,6 +175,7 @@ class TeammateContext:
         return self.abort_controller.cancel_event
 
 
+#创建一个上下文变量
 _teammate_context_var: ContextVar[TeammateContext | None] = ContextVar(
     "_teammate_context_var", default=None
 )
@@ -183,6 +189,7 @@ def get_teammate_context() -> TeammateContext | None:
     return _teammate_context_var.get()
 
 
+#存这个队友自己的所有状态信息
 def set_teammate_context(ctx: TeammateContext) -> None:
     """Bind *ctx* to the current async context (task-local)."""
     _teammate_context_var.set(ctx)
@@ -197,8 +204,8 @@ async def start_in_process_teammate(
     *,
     config: TeammateSpawnConfig,
     agent_id: str,
-    abort_controller: TeammateAbortController,
-    query_context: Any | None = None,
+    abort_controller: TeammateAbortController,#取消控制器
+    query_context: Any | None = None,#可选的预构建查询上下文
 ) -> None:
     """Run the agent query loop for an in-process teammate.
 
@@ -229,6 +236,7 @@ async def start_in_process_teammate(
         function runs a stub that respects the cancel signals so tests and
         direct invocations still work.
     """
+    #创建一个 TeammateContext 对象，用于存储该队友在整个生命周期中的状态信息（如ID、名称、开始时间、状态等）
     ctx = TeammateContext(
         agent_id=agent_id,
         agent_name=config.name,
@@ -240,8 +248,10 @@ async def start_in_process_teammate(
         started_at=time.time(),
         status="starting",
     )
+    #将该上下文绑定到当前异步任务上下文中
     set_teammate_context(ctx)
 
+    #为该队友创建一个专属邮箱（TeammateMailbox），用于接收来自领导者或其他队友的消息
     mailbox = TeammateMailbox(team_name=config.team, agent_id=agent_id)
 
     logger.debug("[in_process] %s: starting", agent_id)
@@ -261,6 +271,7 @@ async def start_in_process_teammate(
                 config.prompt,
             )
             ctx.status = "idle"
+            #检查取消信号
             for _ in range(10):
                 if abort_controller.is_cancelled:
                     logger.debug("[in_process] %s: cancelled during stub run", agent_id)
@@ -275,6 +286,7 @@ async def start_in_process_teammate(
     finally:
         ctx.status = "stopped"
         # Notify the leader that this teammate has gone idle / finished.
+        #发送“空闲通知”给领导
         with contextlib.suppress(Exception):
             idle_msg = create_idle_notification(
                 sender=agent_id,
@@ -292,6 +304,7 @@ async def start_in_process_teammate(
         )
 
 
+#清空邮箱，处理收到的消息
 async def _drain_mailbox(
     mailbox: TeammateMailbox,
     ctx: TeammateContext,
@@ -335,7 +348,7 @@ async def _drain_mailbox(
 async def _run_query_loop(
     query_context: Any,
     config: TeammateSpawnConfig,
-    ctx: TeammateContext,
+    ctx: TeammateContext, 
     mailbox: TeammateMailbox,
 ) -> None:
     """Drive :func:`~openharness.engine.query.run_query` until done or cancelled.
@@ -350,10 +363,12 @@ async def _run_query_loop(
     from openharness.engine.query import run_query
     from openharness.engine.messages import ConversationMessage
 
+    #初始化消息列表，这个列表会随着对话进行不断追加新消息
     messages: list[ConversationMessage] = [
         ConversationMessage.from_user_text(config.prompt)
     ]
 
+    #run_query 是一个异步生成器，每次迭代返回一个 (event, usage) 元组
     async for event, usage in run_query(query_context, messages):
         # Track token usage if usage info is provided
         if usage is not None:
@@ -382,6 +397,7 @@ async def _run_query_loop(
         # Drain message queue and inject as new turns
         while not ctx.message_queue.empty():
             try:
+                #非阻塞地从队列中获取一条消息。如果队列为空会抛出 asyncio.QueueEmpty，捕获后跳出循环
                 queued = ctx.message_queue.get_nowait()
             except asyncio.QueueEmpty:
                 break
@@ -433,6 +449,7 @@ class InProcessBackend:
         """In-process backend is always available — no external dependencies."""
         return True
 
+    #负责在进程内启动一个队友任务
     async def spawn(self, config: TeammateSpawnConfig) -> SpawnResult:
         """Spawn an in-process teammate as an asyncio Task.
 
@@ -443,6 +460,7 @@ class InProcessBackend:
         agent_id = f"{config.name}@{config.team}"
         task_id = f"in_process_{uuid.uuid4().hex[:12]}"
 
+        #表示该队友正在运行
         if agent_id in self._active:
             entry = self._active[agent_id]
             if not entry.task.done():
@@ -457,10 +475,12 @@ class InProcessBackend:
                     error=f"Agent {agent_id!r} is already running",
                 )
 
+        #创建取消控制器
         abort_controller = TeammateAbortController()
 
         # asyncio.create_task() copies the current Context automatically,
         # so each Task starts with an independent ContextVar state.
+        #创建异步任务
         task = asyncio.create_task(
             start_in_process_teammate(
                 config=config,
@@ -470,6 +490,7 @@ class InProcessBackend:
             name=f"teammate-{agent_id}",
         )
 
+        #注册任务到活跃列表
         entry = _TeammateEntry(
             task=task,
             abort_controller=abort_controller,
@@ -479,9 +500,10 @@ class InProcessBackend:
 
         def _on_done(t: asyncio.Task[None]) -> None:
             self._active.pop(agent_id, None)
+            #如果任务因异常而失败
             if not t.cancelled() and t.exception() is not None:
                 self._on_teammate_error(agent_id, t.exception())  # type: ignore[arg-type]
-
+        #将回调函数注册到任务上。任务完成时会自动调用该回调。
         task.add_done_callback(_on_done)
 
         logger.debug("[InProcessBackend] spawned %s (task_id=%s)", agent_id, task_id)
@@ -491,6 +513,7 @@ class InProcessBackend:
             backend_type=self.type,
         )
 
+    #用于向特定队友发送消息的核心方法
     async def send_message(self, agent_id: str, message: TeammateMessage) -> None:
         """Write *message* to the teammate's file-based mailbox.
 
@@ -526,6 +549,7 @@ class InProcessBackend:
         await mailbox.write(msg)
         logger.debug("[InProcessBackend] sent message to %s", agent_id)
 
+    #用于终止运行中队友的核心方法，实现了优雅关闭和强制终止两种模式
     async def shutdown(
         self, agent_id: str, *, force: bool = False, timeout: float = 10.0
     ) -> bool:

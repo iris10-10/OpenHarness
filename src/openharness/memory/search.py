@@ -1,4 +1,5 @@
 """Simple heuristic memory search."""
+#用于从大量记忆文件中找出与查询最相关的内容。我来逐步解读
 
 from __future__ import annotations
 
@@ -35,7 +36,7 @@ def find_relevant_memories(
         # Metadata matches are weighted 2x; body matches 1x.
         meta_hits = sum(1 for t in tokens if t in meta)
         body_hits = sum(1 for t in tokens if t in body)
-        usage = get_memory_usage(cwd, header.id, memory_dir=header.path.parent)
+        usage = get_memory_usage(cwd, header.id, memory_dir=header.path.parent) #使用频率
         score = (
             meta_hits * 2.0
             + body_hits
@@ -50,6 +51,8 @@ def find_relevant_memories(
     return [header for _, header in scored[:max_results]]
 
 
+#把文本拆成"搜索关键词"，就是把一整段文本提取成一组组词元是吗
+#因为是关键词搜索，不用在意语序
 def _tokenize(text: str) -> set[str]:
     """Extract search tokens from *text*, handling ASCII and Han ideographs."""
     # ASCII word tokens (3+ chars)
@@ -59,6 +62,7 @@ def _tokenize(text: str) -> set[str]:
     return ascii_tokens | han_chars
 
 
+#根据记忆的"年龄"给予额外加分：越近的记忆，加分越多
 def _recency_boost(header: MemoryHeader) -> float:
     timestamp = parse_datetime(header.updated_at) or parse_datetime(header.created_at)
     if timestamp is None:

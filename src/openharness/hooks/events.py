@@ -5,6 +5,7 @@ from __future__ import annotations
 from enum import Enum
 
 
+#列出了所有可以触发钩子执行的生命周期节点
 class HookEvent(str, Enum):
     """Events that can trigger hooks."""
 

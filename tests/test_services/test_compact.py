@@ -32,6 +32,7 @@ from openharness.services.compact import (
 )
 
 
+#验证两个Token估算工具是否按预期工作
 def test_token_estimation_helpers():
     assert estimate_tokens("") == 0
     assert estimate_tokens("abcd") == 1
@@ -51,9 +52,9 @@ def test_compact_and_summarize_messages():
     assert "assistant: second answer" in summary
 
     compacted = compact_messages(messages, preserve_recent=2)
-    assert len(compacted) == 3
+    assert len(compacted) == 3  #一条摘要跟两条保留的消息
     assert "[conversation summary]" in compacted[0].text
-    assert estimate_conversation_tokens(compacted) >= 1
+    assert estimate_conversation_tokens(compacted) >= 1 #压缩后的总Token数至少为1（确保内容没丢空）
 
 
 def test_compact_messages_shifts_boundary_to_keep_tool_pair_intact():
