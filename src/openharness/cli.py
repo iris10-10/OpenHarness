@@ -15,6 +15,9 @@ from urllib.parse import urlparse
 
 import typer
 
+#求职工具子命令入口（Phase 0 占位，具体子命令在 Phase 5 实现）
+from openharness.jobhunt.cli import jobhunt_app
+
 __version__ = "0.1.9"
 #停用词，常见的无实际意义的词的集合
 _PREVIEW_STOPWORDS = {
@@ -817,6 +820,8 @@ app.add_typer(provider_app)
 app.add_typer(config_app)
 app.add_typer(cron_app)
 app.add_typer(autopilot_app)
+#求职工具子命令挂载点（Phase 0 预留，Phase 5 填充具体命令）
+app.add_typer(jobhunt_app)
 
 
 # ---- mcp subcommands ----

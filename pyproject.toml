@@ -44,6 +44,25 @@ dev = [
     "ruff>=0.5.0",
     "mypy>=1.10.0",
 ]
+#RAG 检索分组（Phase 1 启用）：向量库 + BM25 重排 + 文档解析，均为可选重依赖
+rag = [
+    "chromadb>=0.5.0",
+    "rank-bm25>=0.2.2",
+    "pypdf>=4.0.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.0.0",
+]
+#RAG 本地 Embedding 分组（BGE-M3 / sentence-transformers，体积大，按需安装）
+rag-local = [
+    "sentence-transformers>=3.0.0",
+    "torch>=2.2.0",
+]
+#Web UI 分组（Phase 6 启用）：求职仪表盘服务
+web = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.29.0",
+    "python-multipart>=0.0.9",
+]
 
 [project.scripts]
 openharness = "openharness.cli:app"
