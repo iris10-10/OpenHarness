@@ -1,0 +1,15 @@
+src\openharness\auth\storage.py:98: error: Cannot find implementation or library stub for module named "keyring"  [import-not-found]
+src\openharness\auth\storage.py:174: error: Cannot find implementation or library stub for module named "keyring.errors"  [import-not-found]
+src\openharness\auth\storage.py:174: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+src\openharness\coordinator\agent_definitions.py:9: error: Library stubs not installed for "yaml"  [import-untyped]
+src\openharness\coordinator\agent_definitions.py:9: note: Hint: "python3 -m pip install types-PyYAML"
+src\openharness\coordinator\agent_definitions.py:9: note: (or run "mypy --install-types" to install all missing stub packages)
+src\openharness\services\cron.py:11: error: Library stubs not installed for "croniter"  [import-untyped]
+src\openharness\services\cron.py:11: note: Hint: "python3 -m pip install types-croniter"
+src\openharness\plugins\loader.py:14: error: Library stubs not installed for "yaml"  [import-untyped]
+ohmo\gateway\notify.py:41: error: Skipping analyzing "lark_oapi": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+ohmo\gateway\notify.py:42: error: Skipping analyzing "lark_oapi.api.im.v1": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+src\openharness\skills\_frontmatter.py:8: error: Library stubs not installed for "yaml"  [import-untyped]
+src\openharness\memory\schema.py:15: error: Library stubs not installed for "yaml"  [import-untyped]
+.venv\Lib\site-packages\numpy\__init__.pyi:737: error: Type statement is only supported in Python 3.12 and greater  [syntax]
+Found 10 errors in 8 files (errors prevented further checking)

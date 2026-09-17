@@ -117,3 +117,56 @@ class ChannelConfigs(_CompatModel):
 class Config(_CompatModel):
     channels: ChannelConfigs = Field(default_factory=ChannelConfigs)
     providers: ProviderConfigs = Field(default_factory=ProviderConfigs)
+
+
+# ---------------------------------------------------------------------------
+# RAG 知识检索配置（Phase 1）
+# ---------------------------------------------------------------------------
+
+
+class RagEmbeddingSettings(BaseModel):
+    """Embedding provider configuration for the RAG pipeline."""
+
+    provider: str = "auto"  # auto / openai / local / hash
+    openai_model: str = "text-embedding-3-small"
+    api_key: str = ""
+    base_url: str = ""
+    local_model: str = "BAAI/bge-m3"
+    cache_enabled: bool = True
+    cache_ttl_days: int = 30
+
+
+class RagChunkingSettings(BaseModel):
+    """Document chunking configuration for the ingestion pipeline."""
+
+    chunk_tokens: int = 512
+    overlap_tokens: int = 64
+    strategy: str = "semantic"  # semantic / fixed
+
+
+class RagRetrievalSettings(BaseModel):
+    """Two-stage retrieval configuration (recall then rerank)."""
+
+    vector_top_k: int = 20
+    final_top_n: int = 5
+    candidate_pool: int = 200
+    hybrid_alpha: float = 0.7
+    rerank_strategy: str = "auto"  # auto / heuristic / llm
+    context_budget_ratio: float = 0.25
+    max_context_tokens: int = 4000
+
+
+class RagSettings(BaseModel):
+    """RAG knowledge retrieval configuration.
+
+    ``enabled`` gates prompt-time context injection; the ``rag_search`` tools
+    stay available even when disabled so users can search explicitly.
+    """
+
+    enabled: bool = False
+    persist_directory: str = ""  # 空 → ~/.openharness/chromadb
+    default_collection: str = "knowledge"
+    max_chunks_per_document: int = 400
+    embedding: RagEmbeddingSettings = Field(default_factory=RagEmbeddingSettings)
+    chunking: RagChunkingSettings = Field(default_factory=RagChunkingSettings)
+    retrieval: RagRetrievalSettings = Field(default_factory=RagRetrievalSettings)

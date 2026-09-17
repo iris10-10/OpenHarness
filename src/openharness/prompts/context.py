@@ -99,6 +99,39 @@ def _build_permission_mode_section(settings: Settings) -> str:
     return f"# Current Permission Mode\n{guidance}"
 
 
+def build_rag_context(
+    settings: Settings,
+    *,
+    cwd: str | Path,
+    latest_user_prompt: str | None,
+) -> str | None:
+    """Build the RAG retrieval section for the runtime system prompt.
+
+    Returns ``None`` when RAG is disabled, no query is available, no
+    documents match, or retrieval fails - prompt assembly must never be
+    blocked by the retrieval layer.
+    """
+    del cwd  # 预留：后续可按项目维度限定检索范围
+    if not settings.rag.enabled:
+        return None
+    if not latest_user_prompt or not latest_user_prompt.strip():
+        return None
+    try:
+        from openharness.rag import build_retriever_from_settings
+        from openharness.rag.retriever import format_retrieval_for_prompt
+
+        retriever = build_retriever_from_settings(settings)
+        outcome = retriever.retrieve_sync(latest_user_prompt)
+        if not outcome.hits:
+            return None
+        body = format_retrieval_for_prompt(outcome)
+        if not body:
+            return None
+        return f"# Retrieved Knowledge\n\n{body}"
+    except Exception:  # 检索层不得阻断提示词组装
+        return None
+
+
 def build_runtime_system_prompt(
     settings: Settings,
     *,
@@ -183,5 +216,9 @@ def build_runtime_system_prompt(
                 except OSError:
                     pass
                 sections.append(format_relevant_memories(relevant))
+
+    rag_section = build_rag_context(settings, cwd=cwd, latest_user_prompt=latest_user_prompt)
+    if rag_section:
+        sections.append(rag_section)
 
     return "\n\n".join(section for section in sections if section.strip())

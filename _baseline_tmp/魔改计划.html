@@ -1,0 +1,2080 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenHarness 魔改计划 — 计算机求职 Agent</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #1c2128;
+            --bg-card: #161b22;
+            --border-color: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-orange: #d29922;
+            --accent-purple: #bc8cff;
+            --accent-red: #f85149;
+            --accent-cyan: #39d0d8;
+            --accent-pink: #f778ba;
+            --shadow-glow: 0 0 20px rgba(88, 166, 255, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        /* ===== 顶部 Hero ===== */
+        .hero {
+            position: relative;
+            min-height: 420px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #1a1f2e 100%);
+            overflow: hidden;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -10%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(88, 166, 255, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            right: -5%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(188, 140, 255, 0.06) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: float 10s ease-in-out infinite reverse;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-30px) scale(1.05); }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 0 2rem;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            border-radius: 999px;
+            font-size: 0.8rem;
+            color: var(--accent-blue);
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.05em;
+        }
+
+        .hero h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #e6edf3 0%, #58a6ff 50%, #bc8cff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+        }
+
+        .hero p {
+            font-size: 1.15rem;
+            color: var(--text-secondary);
+            max-width: 720px;
+            margin: 0 auto 2rem;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .hero-stat {
+            text-align: center;
+        }
+
+        .hero-stat-num {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .hero-stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* ===== 主容器 ===== */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 4rem;
+        }
+
+        /* ===== 区段标题 ===== */
+        .section {
+            margin-bottom: 3.5rem;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .section-icon {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .section-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .section-header .phase-tag {
+            margin-left: auto;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* ===== 卡片网格 ===== */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: border-color 0.3s, transform 0.2s, box-shadow 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            border-color: rgba(88, 166, 255, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: var(--accent-color, var(--accent-blue));
+        }
+
+        .card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .card-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+        }
+
+        .card-badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge-new {
+            background: rgba(63, 185, 80, 0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+        }
+
+        .badge-modify {
+            background: rgba(210, 153, 34, 0.15);
+            color: var(--accent-orange);
+            border: 1px solid rgba(210, 153, 34, 0.3);
+        }
+
+        .badge-add {
+            background: rgba(88, 166, 255, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+        }
+
+        .badge-integrate {
+            background: rgba(188, 140, 255, 0.15);
+            color: var(--accent-purple);
+            border: 1px solid rgba(188, 140, 255, 0.3);
+        }
+
+        .card-body {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .card-body ul {
+            list-style: none;
+            margin-top: 0.5rem;
+        }
+
+        .card-body ul li {
+            padding-left: 1.25rem;
+            position: relative;
+            margin-bottom: 0.35rem;
+        }
+
+        .card-body ul li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: var(--accent-color, var(--accent-blue));
+        }
+
+        .card-footer {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .file-tag {
+            font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            background: rgba(110, 118, 129, 0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        /* ===== 架构图 ===== */
+        .arch-diagram {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+
+        .arch-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-width: 800px;
+        }
+
+        .arch-layer {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .arch-layer-label {
+            width: 140px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .arch-boxes {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .arch-box {
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .arch-arrow {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+        }
+
+        /* ===== 清单表 ===== */
+        .checklist {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .checklist thead th {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .checklist thead th:first-child { border-top-left-radius: 8px; }
+        .checklist thead th:last-child { border-top-right-radius: 8px; }
+
+        .checklist tbody tr {
+            transition: background 0.2s;
+        }
+
+        .checklist tbody tr:hover {
+            background: rgba(88, 166, 255, 0.03);
+        }
+
+        .checklist tbody td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+            font-size: 0.88rem;
+            vertical-align: top;
+        }
+
+        .checklist tbody td:first-child {
+            color: var(--text-muted);
+            font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+            font-size: 0.82rem;
+            white-space: nowrap;
+        }
+
+        .check-box {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            vertical-align: middle;
+            margin-right: 0.5rem;
+        }
+
+        .priority-high { color: var(--accent-red); }
+        .priority-medium { color: var(--accent-orange); }
+        .priority-low { color: var(--text-muted); }
+
+        /* ===== 进度条 ===== */
+        .phase-bar {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 1rem;
+            height: 4px;
+        }
+
+        .phase-segment {
+            flex: 1;
+            border-radius: 2px;
+            opacity: 0.3;
+        }
+
+        .phase-segment.active {
+            opacity: 1;
+        }
+
+        /* ===== 颜色变量 ===== */
+        .color-blue { --accent-color: var(--accent-blue); }
+        .color-green { --accent-color: var(--accent-green); }
+        .color-orange { --accent-color: var(--accent-orange); }
+        .color-purple { --accent-color: var(--accent-purple); }
+        .color-cyan { --accent-color: var(--accent-cyan); }
+        .color-pink { --accent-color: var(--accent-pink); }
+        .color-red { --accent-color: var(--accent-red); }
+
+        .bg-blue { background: rgba(88, 166, 255, 0.1); color: var(--accent-blue); }
+        .bg-green { background: rgba(63, 185, 80, 0.1); color: var(--accent-green); }
+        .bg-orange { background: rgba(210, 153, 34, 0.1); color: var(--accent-orange); }
+        .bg-purple { background: rgba(188, 140, 255, 0.1); color: var(--accent-purple); }
+        .bg-cyan { background: rgba(57, 208, 216, 0.1); color: var(--accent-cyan); }
+        .bg-pink { background: rgba(247, 120, 186, 0.1); color: var(--accent-pink); }
+        .bg-red { background: rgba(248, 81, 73, 0.1); color: var(--accent-red); }
+
+        /* ===== 信息框 ===== */
+        .info-box {
+            background: rgba(88, 166, 255, 0.05);
+            border: 1px solid rgba(88, 166, 255, 0.15);
+            border-left: 3px solid var(--accent-blue);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin: 1.5rem 0;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .info-box strong {
+            color: var(--accent-blue);
+        }
+
+        /* ===== 图例 ===== */
+        .legend {
+            display: flex;
+            gap: 1.25rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+            font-size: 0.8rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--text-secondary);
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 1.8rem; }
+            .hero p { font-size: 1rem; }
+            .card-grid { grid-template-columns: 1fr; }
+            .arch-layer-label { display: none; }
+            .checklist { font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== Hero ===== -->
+<section class="hero">
+    <div class="hero-content">
+        <div class="hero-badge">OpenHarness v0.1.9 → JobHunter Agent</div>
+        <h1>计算机求职 Agent 魔改计划</h1>
+        <p>将 OpenHarness 从通用 AI 编码助手改造为计算机行业求职全流程智能 Agent，集成 RAG 知识检索、简历分析、岗位匹配、面试准备等核心能力。</p>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <div class="hero-stat-num">5</div>
+                <div class="hero-stat-label">改造阶段</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-num">12+</div>
+                <div class="hero-stat-label">新增工具</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-num">6</div>
+                <div class="hero-stat-label">新增技能</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-num">4</div>
+                <div class="hero-stat-label">数据源</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="container">
+
+    <!-- ===== 图例 ===== -->
+    <div class="legend">
+        <div class="legend-item"><span class="card-badge badge-add">新增</span> 全新模块</div>
+        <div class="legend-item"><span class="card-badge badge-modify">修改</span> 改造现有代码</div>
+        <div class="legend-item"><span class="card-badge badge-new">集成</span> 集成外部服务</div>
+        <div class="legend-item"><span class="card-badge badge-integrate">复用</span> 复用已有能力</div>
+    </div>
+
+    <!-- ===== 架构总览 ===== -->
+    <section class="section">
+        <div class="section-header">
+            <div class="section-icon bg-blue">📊</div>
+            <h2>架构总览</h2>
+        </div>
+
+        <div class="arch-diagram">
+            <div class="arch-flow">
+                <!-- 用户层 -->
+                <div class="arch-layer">
+                    <div class="arch-layer-label">用户交互层</div>
+                    <div class="arch-boxes">
+                        <div class="arch-box bg-blue">CLI (oh job-hunt)</div>
+                        <div class="arch-box bg-blue">TUI 会话</div>
+                        <div class="arch-box bg-blue">求职仪表盘</div>
+                    </div>
+                </div>
+
+                <!-- 提示词层 -->
+                <div class="arch-layer">
+                    <div class="arch-layer-label">提示词层</div>
+                    <div class="arch-boxes">
+                        <div class="arch-box bg-purple">求职系统提示词</div>
+                        <div class="arch-box bg-purple">RAG 上下文注入</div>
+                        <div class="arch-box bg-purple">用户画像上下文</div>
+                    </div>
+                </div>
+
+                <!-- 引擎层 -->
+                <div class="arch-layer">
+                    <div class="arch-layer-label">Agent 引擎层</div>
+                    <div class="arch-boxes">
+                        <div class="arch-box bg-orange">QueryEngine (复用)</div>
+                        <div class="arch-box bg-orange">Agent Loop (复用)</div>
+                        <div class="arch-box bg-orange">工具注册器 (扩展)</div>
+                    </div>
+                </div>
+
+                <!-- RAG 层 -->
+                <div class="arch-layer">
+                    <div class="arch-layer-label">RAG 知识层 (新增)</div>
+                    <div class="arch-boxes">
+                        <div class="arch-box bg-green">向量数据库</div>
+                        <div class="arch-box bg-green">Embedding 服务</div>
+                        <div class="arch-box bg-green">文档分块器</div>
+                        <div class="arch-box bg-green">检索排序器</div>
+                    </div>
+                </div>
+
+                <!-- 工具层 -->
+                <div class="arch-layer">
+                    <div class="arch-layer-label">求职工具层 (新增)</div>
+                    <div class="arch-boxes">
+                        <div class="arch-box bg-cyan">简历管理</div>
+                        <div class="arch-box bg-cyan">岗位匹配</div>
+                        <div class="arch-box bg-cyan">面试准备</div>
+                        <div class="arch-box bg-cyan">薪资调研</div>
+                        <div class="arch-box bg-cyan">公司背调</div>
+                        <div class="arch-box bg-cyan">投递追踪</div>
+                    </div>
+                </div>
+
+                <!-- 数据层 -->
+                <div class="arch-layer">
+                    <div class="arch-layer-label">数据源层</div>
+                    <div class="arch-boxes">
+                        <div class="arch-box bg-pink">Boss直聘</div>
+                        <div class="arch-box bg-pink">拉勾/Boss</div>
+                        <div class="arch-box bg-pink">牛客面经</div>
+                        <div class="arch-box bg-pink">力扣题库</div>
+                        <div class="arch-box bg-pink">本地知识库</div>
+                    </div>
+                </div>
+
+                <!-- 基础设施 -->
+                <div class="arch-layer">
+                    <div class="arch-layer-label">基础架构 (复用)</div>
+                    <div class="arch-boxes">
+                        <div class="arch-box" style="background:rgba(110,118,129,0.15);color:var(--text-muted)">权限系统</div>
+                        <div class="arch-box" style="background:rgba(110,118,129,0.15);color:var(--text-muted)">MCP 集成</div>
+                        <div class="arch-box" style="background:rgba(110,118,129,0.15);color:var(--text-muted)">多 LLM Provider</div>
+                        <div class="arch-box" style="background:rgba(110,118,129,0.15);color:var(--text-muted)">记忆系统</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <strong>设计原则：</strong>最大化复用 OpenHarness 现有架构。Agent Loop、工具注册机制、权限检查、多 Provider 支持等核心能力完全复用，仅在知识层（RAG）和工具层（求职专用工具）进行扩展，并在提示词层注入求职领域上下文。
+        </div>
+    </section>
+
+    <!-- ===== Phase 1: RAG 基础设施 ===== -->
+    <section class="section">
+        <div class="section-header">
+            <div class="section-icon bg-green">🔧</div>
+            <h2>Phase 1 — RAG 基础设施</h2>
+            <span class="phase-tag bg-green">优先级：最高</span>
+        </div>
+        <div class="phase-bar">
+            <div class="phase-segment active" style="background:var(--accent-green)"></div>
+            <div class="phase-segment" style="background:var(--accent-green)"></div>
+            <div class="phase-segment" style="background:var(--accent-green)"></div>
+            <div class="phase-segment" style="background:var(--accent-green)"></div>
+            <div class="phase-segment" style="background:var(--accent-green)"></div>
+        </div>
+
+        <div class="card-grid">
+            <!-- 向量数据库 -->
+            <div class="card color-green">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">向量数据库集成</div>
+                        <div class="card-subtitle">src/openharness/rag/vectorstore.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    引入 ChromaDB 作为本地向量数据库，支持持久化存储和高效相似性检索。
+                    <ul>
+                        <li>ChromaDB 本地持久化，数据存储在 ~/.openharness/chromadb/</li>
+                        <li>多 Collection 管理：jobs、resumes、interview、companies、skills</li>
+                        <li>支持增删改查与元数据过滤</li>
+                        <li>降级方案：FAISS 离线索引备用</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">chromadb</span>
+                    <span class="file-tag">rag/vectorstore.py</span>
+                </div>
+            </div>
+
+            <!-- Embedding 服务 -->
+            <div class="card color-green">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Embedding 服务</div>
+                        <div class="card-subtitle">src/openharness/rag/embedding.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    多策略文本向量化服务，支持在线和本地两种模式。
+                    <ul>
+                        <li>在线：OpenAI text-embedding-3-small / 阿里千问 Embedding</li>
+                        <li>本地：sentence-transformers (BGE-M3) 离线模型</li>
+                        <li>自动降级：在线不可用时切换本地模型</li>
+                        <li>缓存层：避免重复 Embedding 调用</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">sentence-transformers</span>
+                    <span class="file-tag">rag/embedding.py</span>
+                </div>
+            </div>
+
+            <!-- 文档分块 -->
+            <div class="card color-green">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">文档分块与摄入管道</div>
+                        <div class="card-subtitle">src/openharness/rag/ingestion.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    面向求职场景的文档分块和摄入流水线。
+                    <ul>
+                        <li>智能分块：按语义段落切分，保持上下文完整</li>
+                        <li>多格式解析：PDF、Markdown、JSON、HTML</li>
+                        <li>元数据标记：来源、类型(岗位/简历/面经)、日期</li>
+                        <li>增量更新：仅处理新增/变更文档</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">pypdf</span>
+                    <span class="file-tag">beautifulsoup4</span>
+                    <span class="file-tag">rag/ingestion.py</span>
+                </div>
+            </div>
+
+            <!-- 检索排序 -->
+            <div class="card color-green">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">检索与重排序器</div>
+                        <div class="card-subtitle">src/openharness/rag/retriever.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    两阶段检索：向量召回 + 精排序。
+                    <ul>
+                        <li>阶段一：向量相似度 top-K 召回 (cosine)</li>
+                        <li>阶段二：LLM-based 重排序，结合元数据权重</li>
+                        <li>混合检索：关键词 BM25 + 向量语义融合</li>
+                        <li>上下文窗口控制：token 预算内最优选择</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">rag/retriever.py</span>
+                </div>
+            </div>
+
+            <!-- RAG 工具注册 -->
+            <div class="card color-green">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">RAG 检索工具</div>
+                        <div class="card-subtitle">src/openharness/tools/rag_search_tool.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    将 RAG 检索能力注册为 Agent 可调用的工具。
+                    <ul>
+                        <li><code>rag_search</code>：语义搜索知识库</li>
+                        <li><code>rag_search_jobs</code>：搜索匹配岗位</li>
+                        <li><code>rag_search_interview</code>：搜索面经题目</li>
+                        <li>继承 BaseTool，纳入权限系统和工具注册器</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">tools/rag_search_tool.py</span>
+                    <span class="file-tag">tools/__init__.py</span>
+                </div>
+            </div>
+
+            <!-- 上下文注入 -->
+            <div class="card color-green">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">RAG 上下文注入</div>
+                        <div class="card-subtitle">src/openharness/prompts/context.py (修改)</div>
+                    </div>
+                    <span class="card-badge badge-modify">修改</span>
+                </div>
+                <div class="card-body">
+                    在运行时系统提示词组装中注入 RAG 检索结果。
+                    <ul>
+                        <li>在 build_runtime_system_prompt() 中新增 RAG 段</li>
+                        <li>根据用户 query 自动检索相关知识</li>
+                        <li>token 预算控制，不挤占核心上下文</li>
+                        <li>与现有记忆系统协同（RAG 精确检索 + 记忆模糊关联）</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">prompts/context.py</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Phase 2: 求职工具集 ===== -->
+    <section class="section">
+        <div class="section-header">
+            <div class="section-icon bg-cyan">🛠️</div>
+            <h2>Phase 2 — 求职专用工具集</h2>
+            <span class="phase-tag bg-cyan">优先级：高</span>
+        </div>
+        <div class="phase-bar">
+            <div class="phase-segment" style="background:var(--accent-cyan)"></div>
+            <div class="phase-segment active" style="background:var(--accent-cyan)"></div>
+            <div class="phase-segment" style="background:var(--accent-cyan)"></div>
+            <div class="phase-segment" style="background:var(--accent-cyan)"></div>
+            <div class="phase-segment" style="background:var(--accent-cyan)"></div>
+        </div>
+
+        <div class="card-grid">
+            <!-- 简历管理 -->
+            <div class="card color-cyan">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">简历管理工具</div>
+                        <div class="card-subtitle">tools/resume_tool.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    完整的简历解析、存储、生成和优化能力。
+                    <ul>
+                        <li><code>resume_parse</code>：解析 PDF/Markdown 简历，结构化提取</li>
+                        <li><code>resume_generate</code>：根据岗位 JD 定向生成简历</li>
+                        <li><code>resume_optimize</code>：基于 ATS 友好度评分优化</li>
+                        <li><code>resume_compare</code>：多版本简历对比分析</li>
+                        <li>结构化存储到 RAG 向量库，支持语义检索</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">tools/resume_tool.py</span>
+                    <span class="file-tag">rag/vectorstore.py</span>
+                </div>
+            </div>
+
+            <!-- 岗位匹配 -->
+            <div class="card color-cyan">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">岗位匹配引擎</div>
+                        <div class="card-subtitle">tools/job_match_tool.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    基于语义相似度的岗位-简历双向匹配。
+                    <ul>
+                        <li><code>job_match</code>：简历 → 匹配岗位列表 (Top-K)</li>
+                        <li><code>candidate_match</code>：岗位 → 匹配候选人 (反向)</li>
+                        <li>匹配维度：技能、经验、学历、项目、软技能</li>
+                        <li>匹配度评分 + 差距分析报告</li>
+                        <li>支持时间衰减（新鲜岗位权重更高）</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">tools/job_match_tool.py</span>
+                    <span class="file-tag">rag/retriever.py</span>
+                </div>
+            </div>
+
+            <!-- 面试准备 -->
+            <div class="card color-cyan">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">面试准备系统</div>
+                        <div class="card-subtitle">tools/interview_tool.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    基于目标岗位的面试题目生成与练习。
+                    <ul>
+                        <li><code>interview_questions</code>：根据 JD 生成高频面试题</li>
+                        <li><code>interview_practice</code>：模拟面试，实时评分</li>
+                        <li><code>interview_feedback</code>：回答质量分析与改进建议</li>
+                        <li>题型覆盖：八股、算法、系统设计、项目深挖</li>
+                        <li>关联牛客/力扣面经库，真实题目优先</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">tools/interview_tool.py</span>
+                </div>
+            </div>
+
+            <!-- 薪资调研 -->
+            <div class="card color-cyan">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">薪资调研工具</div>
+                        <div class="card-subtitle">tools/salary_tool.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    多维度薪资数据聚合与分析。
+                    <ul>
+                        <li><code>salary_query</code>：按岗位/城市/年限查询薪资范围</li>
+                        <li><code>salary_compare</code>：多公司/多城市薪资对比</li>
+                        <li><code>salary_negotiate</code>：薪资谈判话术与策略生成</li>
+                        <li>数据源：公开招聘薪资 + 历史投递记录</li>
+                        <li>总包计算：base + bonus + stock 年化</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">tools/salary_tool.py</span>
+                </div>
+            </div>
+
+            <!-- 公司背调 -->
+            <div class="card color-cyan">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">公司背调工具</div>
+                        <div class="card-subtitle">tools/company_research_tool.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    目标公司的全方位背景调研。
+                    <ul>
+                        <li><code>company_search</code>：公司基本信息、规模、融资</li>
+                        <li><code>company_culture</code>：团队氛围、工作强度</li>
+                        <li><code>company_techstack</code>：技术栈、工程文化</li>
+                        <li><code>company_history</code>：面试评价、offer 经验</li>
+                        <li>结合 web_search 和 web_fetch 抓取公开信息</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">tools/company_research_tool.py</span>
+                    <span class="file-tag">tools/web_search_tool.py</span>
+                </div>
+            </div>
+
+            <!-- 投递追踪 -->
+            <div class="card color-cyan">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">投递追踪管理</div>
+                        <div class="card-subtitle">tools/application_tracker_tool.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    全生命周期投递记录与状态管理。
+                    <ul>
+                        <li><code>application_create</code>：记录新投递（公司/岗位/渠道/日期）</li>
+                        <li><code>application_update</code>：更新状态（笔试→面试→offer→入职）</li>
+                        <li><code>application_list</code>：查看投递列表和统计</li>
+                        <li><code>application_remind</code>：自动提醒待跟进的投递</li>
+                        <li>与 Cron 系统联动，定时推送进度提醒</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">tools/application_tracker_tool.py</span>
+                    <span class="file-tag">services/cron.py</span>
+                </div>
+            </div>
+
+            <!-- 技能差距分析 -->
+            <div class="card color-cyan">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">技能差距分析</div>
+                        <div class="card-subtitle">tools/skill_gap_tool.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    对比个人能力与目标岗位要求的差距。
+                    <ul>
+                        <li><code>skill_gap_analyze</code>：简历技能 vs JD 要求对比</li>
+                        <li>输出：已覆盖技能、缺失技能、部分匹配技能</li>
+                        <li>学习路径推荐：针对缺失技能推荐学习资源</li>
+                        <li>优先级排序：按市场需求和学习成本</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">tools/skill_gap_tool.py</span>
+                </div>
+            </div>
+
+            <!-- 求职信生成 -->
+            <div class="card color-cyan">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">求职信生成</div>
+                        <div class="card-subtitle">tools/cover_letter_tool.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    根据目标岗位和个人背景生成个性化求职信。
+                    <ul>
+                        <li><code>cover_letter_generate</code>：基于 JD + 简历自动生成</li>
+                        <li>风格可控：正式/简洁/热情</li>
+                        <li>多语言支持：中文/英文</li>
+                        <li>突出匹配点，弱化不相关经历</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">tools/cover_letter_tool.py</span>
+                </div>
+            </div>
+
+            <!-- 职业路径规划 -->
+            <div class="card color-cyan">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">职业路径规划</div>
+                        <div class="card-subtitle">tools/career_path_tool.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    长期职业发展路线图生成。
+                    <ul>
+                        <li><code>career_path_plan</code>：基于当前技能和市场趋势规划</li>
+                        <li>多条路线：技术专家/技术管理/产品/创业</li>
+                        <li>里程碑设定：1年/3年/5年目标</li>
+                        <li>技能树可视化：前置技能 → 目标岗位</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">tools/career_path_tool.py</span>
+                </div>
+            </div>
+
+            <!-- 算法刷题 -->
+            <div class="card color-cyan">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">算法刷题辅助</div>
+                        <div class="card-subtitle">tools/algorithm_practice_tool.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    面试算法题的智能练习与讲解。
+                    <ul>
+                        <li><code>algorithm_recommend</code>：根据目标公司推荐高频题</li>
+                        <li><code>algorithm_analyze</code>：题目分析、思路讲解、复杂度</li>
+                        <li><code>algorithm_review</code>：代码审查，优化建议</li>
+                        <li>关联力扣题库，按难度/类型/公司分类</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">tools/algorithm_practice_tool.py</span>
+                </div>
+            </div>
+
+            <!-- JD 解析 -->
+            <div class="card color-cyan">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">JD 智能解析</div>
+                        <div class="card-subtitle">tools/jd_parse_tool.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    招聘描述的结构化解析与入库。
+                    <ul>
+                        <li><code>jd_parse</code>：提取岗位名/技能要求/经验/学历/薪资</li>
+                        <li>自动分类：前端/后端/算法/运维/测试/产品</li>
+                        <li>关键词提取：必备技能 vs 加分项</li>
+                        <li>解析结果存入 RAG 向量库</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">tools/jd_parse_tool.py</span>
+                </div>
+            </div>
+
+            <!-- 用户画像 -->
+            <div class="card color-cyan">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">用户画像管理</div>
+                        <div class="card-subtitle">tools/user_profile_tool.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    管理求职者的综合能力画像。
+                    <ul>
+                        <li><code>profile_update</code>：更新技能/经验/偏好/期望</li>
+                        <li><code>profile_query</code>：查询当前画像全貌</li>
+                        <li>画像维度：技术栈/经验年限/项目/教育/期望</li>
+                        <li>存入 RAG 向量库，作为匹配基准</li>
+                        <li>与 personalization 模块联动</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">tools/user_profile_tool.py</span>
+                    <span class="file-tag">personalization/</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Phase 3: 技能与提示词 ===== -->
+    <section class="section">
+        <div class="section-header">
+            <div class="section-icon bg-purple">📝</div>
+            <h2>Phase 3 — 提示词改造与技能定义</h2>
+            <span class="phase-tag bg-purple">优先级：高</span>
+        </div>
+        <div class="phase-bar">
+            <div class="phase-segment" style="background:var(--accent-purple)"></div>
+            <div class="phase-segment" style="background:var(--accent-purple)"></div>
+            <div class="phase-segment active" style="background:var(--accent-purple)"></div>
+            <div class="phase-segment" style="background:var(--accent-purple)"></div>
+            <div class="phase-segment" style="background:var(--accent-purple)"></div>
+        </div>
+
+        <div class="card-grid">
+            <!-- 系统提示词 -->
+            <div class="card color-purple">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">系统提示词改造</div>
+                        <div class="card-subtitle">prompts/system_prompt.py (修改)</div>
+                    </div>
+                    <span class="card-badge badge-modify">修改</span>
+                </div>
+                <div class="card-body">
+                    将 Agent 身份从"编码助手"改为"求职顾问"。
+                    <ul>
+                        <li>身份重定义：计算机行业求职 Agent</li>
+                        <li>领域知识注入：行业术语、岗位分类、面试流程</li>
+                        <li>行为约束：不代投简历，提供建议和辅助</li>
+                        <li>语气调整：专业、鼓励、务实</li>
+                        <li>隐私保护：敏感信息处理规则</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">prompts/system_prompt.py</span>
+                </div>
+            </div>
+
+            <!-- RAG 上下文注入 -->
+            <div class="card color-purple">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">上下文组装扩展</div>
+                        <div class="card-subtitle">prompts/context.py (修改)</div>
+                    </div>
+                    <span class="card-badge badge-modify">修改</span>
+                </div>
+                <div class="card-body">
+                    在 9 段动态上下文中注入求职领域信息。
+                    <ul>
+                        <li>新增第 10 段：RAG 检索结果（岗位/简历/面经）</li>
+                        <li>新增第 11 段：用户求职画像摘要</li>
+                        <li>新增第 12 段：当前投递状态概览</li>
+                        <li>token 预算分配：RAG 不超过上下文的 25%</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">prompts/context.py</span>
+                </div>
+            </div>
+
+            <!-- 简历优化技能 -->
+            <div class="card color-purple">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">技能：简历优化</div>
+                        <div class="card-subtitle">skills/bundled/resume_optimize/</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>STAR 法则重写项目经历</li>
+                        <li>ATS 关键词优化（通过关键词匹配度检测）</li>
+                        <li>量化成果提炼（将"优化了性能"改为"提升 QPS 300%"）</li>
+                        <li>多版本管理：技术向/业务向/管理向</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">skills/bundled/resume_optimize/SKILL.md</span>
+                </div>
+            </div>
+
+            <!-- 面试模拟技能 -->
+            <div class="card color-purple">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">技能：面试模拟</div>
+                        <div class="card-subtitle">skills/bundled/interview_sim/</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>按公司/岗位/轮次定制面试题</li>
+                        <li>多角色模拟：技术面/HR面/高管面</li>
+                        <li>实时追问与深挖（基于回答动态出题）</li>
+                        <li>结束后生成评估报告</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">skills/bundled/interview_sim/SKILL.md</span>
+                </div>
+            </div>
+
+            <!-- 求职策略技能 -->
+            <div class="card color-purple">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">技能：求职策略</div>
+                        <div class="card-subtitle">skills/bundled/job_strategy/</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>分析市场趋势（哪些方向在招人）</li>
+                        <li>投递节奏规划（海投 vs 精投策略）</li>
+                        <li>面试时间线管理（避免冲突）</li>
+                        <li>Offer 比较与选择决策框架</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">skills/bundled/job_strategy/SKILL.md</span>
+                </div>
+            </div>
+
+            <!-- 系统设计技能 -->
+            <div class="card color-purple">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">技能：系统设计问答</div>
+                        <div class="card-subtitle">skills/bundled/system_design/</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>经典系统设计题框架（限流/缓存/消息队列等）</li>
+                        <li>分步引导：需求分析→容量估算→架构设计→深入</li>
+                        <li>评分标准与常见陷阱</li>
+                        <li>参考答案库（短链/Feed流/秒杀等）</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">skills/bundled/system_design/SKILL.md</span>
+                </div>
+            </div>
+
+            <!-- 八股文技能 -->
+            <div class="card color-purple">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">技能：八股文题库</div>
+                        <div class="card-subtitle">skills/bundled/cs_knowledge/</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>按方向分类：操作系统/网络/数据库/语言/框架</li>
+                        <li>按频率分级：高频/中频/低频</li>
+                        <li>答题模板与要点提炼</li>
+                        <li>关联 RAG 面经库，实时更新频率</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">skills/bundled/cs_knowledge/SKILL.md</span>
+                </div>
+            </div>
+
+            <!-- 薪资谈判技能 -->
+            <div class="card color-purple">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">技能：薪资谈判</div>
+                        <div class="card-subtitle">skills/bundled/salary_negotiation/</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>市场薪资基准查询与锚定</li>
+                        <li>谈判话术模板（压价应对/反问策略）</li>
+                        <li>总包计算器（base/bonus/stock/期权）</li>
+                        <li>多 Offer 比较矩阵</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">skills/bundled/salary_negotiation/SKILL.md</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Phase 4: 数据源与爬虫 ===== -->
+    <section class="section">
+        <div class="section-header">
+            <div class="section-icon bg-pink">📡</div>
+            <h2>Phase 4 — 数据源与信息采集</h2>
+            <span class="phase-tag bg-pink">优先级：中</span>
+        </div>
+        <div class="phase-bar">
+            <div class="phase-segment" style="background:var(--accent-pink)"></div>
+            <div class="phase-segment" style="background:var(--accent-pink)"></div>
+            <div class="phase-segment" style="background:var(--accent-pink)"></div>
+            <div class="phase-segment active" style="background:var(--accent-pink)"></div>
+            <div class="phase-segment" style="background:var(--accent-pink)"></div>
+        </div>
+
+        <div class="card-grid">
+            <!-- 岗位信息采集 -->
+            <div class="card color-pink">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">招聘平台岗位采集</div>
+                        <div class="card-subtitle">rag/sources/job_scraper.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>Boss直聘：岗位列表 + JD 详情</li>
+                        <li>拉勾网：按城市/方向/经验筛选</li>
+                        <li>猎聘：中高端岗位定向采集</li>
+                        <li>反爬策略：请求限速 + 随机延迟 + UA 轮换</li>
+                        <li>增量采集：只入库新岗位，去重已存在的</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">httpx</span>
+                    <span class="file-tag">rag/sources/</span>
+                </div>
+            </div>
+
+            <!-- 面经采集 -->
+            <div class="card color-pink">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">面试经验采集</div>
+                        <div class="card-subtitle">rag/sources/interview_scraper.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>牛客网：面经帖 + 答案</li>
+                        <li>力扣讨论区：面试题讨论</li>
+                        <li>一亩三分地：海外面试经验</li>
+                        <li>按公司/岗位/时间结构化入库</li>
+                        <li>自动去重和内容清洗</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">rag/sources/</span>
+                </div>
+            </div>
+
+            <!-- 公司信息采集 -->
+            <div class="card color-pink">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">公司信息采集</div>
+                        <div class="card-subtitle">rag/sources/company_scraper.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>天眼查/企查查：工商信息、融资历程</li>
+                        <li>Pulse/Maimai：公司评价、薪资爆料</li>
+                        <li>GitHub/GitLab：开源项目活跃度</li>
+                        <li>技术博客：工程文化洞察</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">rag/sources/</span>
+                </div>
+            </div>
+
+            <!-- 本地知识导入 -->
+            <div class="card color-pink">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">本地知识导入</div>
+                        <div class="card-subtitle">rag/sources/local_importer.py</div>
+                    </div>
+                    <span class="card-badge badge-add">新增</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>支持批量导入 PDF/Markdown/JSON 文件</li>
+                        <li>目录扫描：自动识别文件类型</li>
+                        <li>自定义知识库分类标签</li>
+                        <li>导入进度追踪与日志</li>
+                        <li>CLI 命令：<code>oh job-hunt import --dir ./data</code></li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">rag/sources/local_importer.py</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Phase 5: CLI 与 UX ===== -->
+    <section class="section">
+        <div class="section-header">
+            <div class="section-icon bg-orange">⚡</div>
+            <h2>Phase 5 — CLI 命令与用户体验</h2>
+            <span class="phase-tag bg-orange">优先级：中</span>
+        </div>
+        <div class="phase-bar">
+            <div class="phase-segment" style="background:var(--accent-orange)"></div>
+            <div class="phase-segment" style="background:var(--accent-orange)"></div>
+            <div class="phase-segment" style="background:var(--accent-orange)"></div>
+            <div class="phase-segment" style="background:var(--accent-orange)"></div>
+            <div class="phase-segment active" style="background:var(--accent-orange)"></div>
+        </div>
+
+        <div class="card-grid">
+            <!-- CLI 子命令 -->
+            <div class="card color-orange">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">求职 CLI 子命令组</div>
+                        <div class="card-subtitle">cli.py (修改) + jobhunt/cli.py (新增)</div>
+                    </div>
+                    <span class="card-badge badge-modify">修改</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li><code>oh job-hunt chat</code>：进入求职对话模式</li>
+                        <li><code>oh job-hunt search "Java 3年 北京"</code>：搜索岗位</li>
+                        <li><code>oh job-hunt match</code>：简历匹配岗位</li>
+                        <li><code>oh job-hunt interview "字节 后端"</code>：生成面试题</li>
+                        <li><code>oh job-hunt import --dir ./data</code>：导入知识</li>
+                        <li><code>oh job-hunt status</code>：查看投递看板</li>
+                        <li><code>oh job-hunt setup</code>：初始化 RAG 数据库</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">cli.py</span>
+                    <span class="file-tag">jobhunt/cli.py</span>
+                </div>
+            </div>
+
+            <!-- 配置扩展 -->
+            <div class="card color-orange">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">配置模型扩展</div>
+                        <div class="card-subtitle">config/settings.py (修改)</div>
+                    </div>
+                    <span class="card-badge badge-modify">修改</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>新增 <code>rag</code> 配置段：向量库路径、Embedding 模型、Collection</li>
+                        <li>新增 <code>job_hunt</code> 配置段：目标城市、期望薪资、意向方向</li>
+                        <li>新增 <code>scraping</code> 配置段：平台开关、请求频率、代理</li>
+                        <li>环境变量支持：<code>OPENHARNESS_RAG_*</code></li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">config/settings.py</span>
+                    <span class="file-tag">config/schema.py</span>
+                </div>
+            </div>
+
+            <!-- 权限调整 -->
+            <div class="card color-orange">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">权限策略调整</div>
+                        <div class="card-subtitle">permissions/checker.py (修改)</div>
+                    </div>
+                    <span class="card-badge badge-modify">修改</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>RAG 相关工具设为只读，默认允许</li>
+                        <li>爬虫工具需用户确认（网络请求类）</li>
+                        <li>投递追踪工具默认允许（本地操作）</li>
+                        <li>简历生成工具默认允许（文件写入）</li>
+                        <li>敏感路径保护不变（复用现有机制）</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">permissions/checker.py</span>
+                </div>
+            </div>
+
+            <!-- 依赖更新 -->
+            <div class="card color-orange">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">依赖与打包更新</div>
+                        <div class="card-subtitle">pyproject.toml (修改)</div>
+                    </div>
+                    <span class="card-badge badge-modify">修改</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>新增：chromadb, sentence-transformers</li>
+                        <li>新增：pypdf, beautifulsoup4, lxml</li>
+                        <li>新增：rank-bm25 (BM25 检索)</li>
+                        <li>可选：torch (本地 Embedding 模型依赖)</li>
+                        <li>CLI 入口新增：<code>oh-jobhunt</code></li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">pyproject.toml</span>
+                </div>
+            </div>
+
+            <!-- 输出渲染 -->
+            <div class="card color-orange">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">输出渲染增强</div>
+                        <div class="card-subtitle">ui/output.py (修改)</div>
+                    </div>
+                    <span class="card-badge badge-modify">修改</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>岗位列表：表格渲染（公司/岗位/薪资/匹配度）</li>
+                        <li>面试题目：高亮代码块 + 折叠答案</li>
+                        <li>匹配报告：进度条 + 差距雷达图</li>
+                        <li>投递看板：状态流水线可视化</li>
+                        <li>薪资对比：柱状图渲染</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">ui/output.py</span>
+                </div>
+            </div>
+
+            <!-- 定时任务 -->
+            <div class="card color-orange">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">定时任务集成</div>
+                        <div class="card-subtitle">services/cron.py (复用)</div>
+                    </div>
+                    <span class="card-badge badge-integrate">复用</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>每日岗位推送：定时检索新岗位并通知</li>
+                        <li>投递提醒：超过 N 天未跟进的投递</li>
+                        <li>面经更新：目标公司新面经推送</li>
+                        <li>复用现有 cron 系统和 channels 通知</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <span class="file-tag">services/cron.py</span>
+                    <span class="file-tag">channels/</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== 完整清单 ===== -->
+    <section class="section">
+        <div class="section-header">
+            <div class="section-icon bg-blue">📋</div>
+            <h2>完整改造清单</h2>
+        </div>
+
+        <div style="overflow-x:auto;">
+        <table class="checklist">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>任务</th>
+                    <th>类型</th>
+                    <th>文件路径</th>
+                    <th>阶段</th>
+                    <th>优先级</th>
+                    <th>状态</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>创建 rag/ 模块目录结构</td>
+                    <td>新增</td>
+                    <td><code>src/openharness/rag/</code></td>
+                    <td>P1</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>集成 ChromaDB 向量数据库</td>
+                    <td>新增</td>
+                    <td><code>rag/vectorstore.py</code></td>
+                    <td>P1</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>实现 Embedding 服务（在线+本地）</td>
+                    <td>新增</td>
+                    <td><code>rag/embedding.py</code></td>
+                    <td>P1</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>实现文档分块与摄入管道</td>
+                    <td>新增</td>
+                    <td><code>rag/ingestion.py</code></td>
+                    <td>P1</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td>实现两阶段检索排序器</td>
+                    <td>新增</td>
+                    <td><code>rag/retriever.py</code></td>
+                    <td>P1</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td>注册 RAG 检索工具到 ToolRegistry</td>
+                    <td>新增</td>
+                    <td><code>tools/rag_search_tool.py</code></td>
+                    <td>P1</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td>在上下文组装中注入 RAG 检索结果</td>
+                    <td>修改</td>
+                    <td><code>prompts/context.py</code></td>
+                    <td>P1</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>8</td>
+                    <td>修改系统提示词为求职 Agent 身份</td>
+                    <td>修改</td>
+                    <td><code>prompts/system_prompt.py</code></td>
+                    <td>P3</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>9</td>
+                    <td>实现简历管理工具（解析/生成/优化）</td>
+                    <td>新增</td>
+                    <td><code>tools/resume_tool.py</code></td>
+                    <td>P2</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>10</td>
+                    <td>实现岗位匹配引擎</td>
+                    <td>新增</td>
+                    <td><code>tools/job_match_tool.py</code></td>
+                    <td>P2</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>11</td>
+                    <td>实现面试准备系统</td>
+                    <td>新增</td>
+                    <td><code>tools/interview_tool.py</code></td>
+                    <td>P2</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>12</td>
+                    <td>实现 JD 智能解析工具</td>
+                    <td>新增</td>
+                    <td><code>tools/jd_parse_tool.py</code></td>
+                    <td>P2</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>13</td>
+                    <td>实现用户画像管理工具</td>
+                    <td>新增</td>
+                    <td><code>tools/user_profile_tool.py</code></td>
+                    <td>P2</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>14</td>
+                    <td>实现技能差距分析工具</td>
+                    <td>新增</td>
+                    <td><code>tools/skill_gap_tool.py</code></td>
+                    <td>P2</td>
+                    <td class="priority-medium">P1</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>15</td>
+                    <td>实现投递追踪管理工具</td>
+                    <td>新增</td>
+                    <td><code>tools/application_tracker_tool.py</code></td>
+                    <td>P2</td>
+                    <td class="priority-medium">P1</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>16</td>
+                    <td>实现薪资调研工具</td>
+                    <td>新增</td>
+                    <td><code>tools/salary_tool.py</code></td>
+                    <td>P2</td>
+                    <td class="priority-medium">P1</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>17</td>
+                    <td>实现公司背调工具</td>
+                    <td>新增</td>
+                    <td><code>tools/company_research_tool.py</code></td>
+                    <td>P2</td>
+                    <td class="priority-medium">P1</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>18</td>
+                    <td>实现求职信生成工具</td>
+                    <td>新增</td>
+                    <td><code>tools/cover_letter_tool.py</code></td>
+                    <td>P2</td>
+                    <td class="priority-low">P2</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>19</td>
+                    <td>实现职业路径规划工具</td>
+                    <td>新增</td>
+                    <td><code>tools/career_path_tool.py</code></td>
+                    <td>P2</td>
+                    <td class="priority-low">P2</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>20</td>
+                    <td>实现算法刷题辅助工具</td>
+                    <td>新增</td>
+                    <td><code>tools/algorithm_practice_tool.py</code></td>
+                    <td>P2</td>
+                    <td class="priority-low">P2</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>21</td>
+                    <td>创建简历优化 Skill</td>
+                    <td>新增</td>
+                    <td><code>skills/bundled/resume_optimize/</code></td>
+                    <td>P3</td>
+                    <td class="priority-medium">P1</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>22</td>
+                    <td>创建面试模拟 Skill</td>
+                    <td>新增</td>
+                    <td><code>skills/bundled/interview_sim/</code></td>
+                    <td>P3</td>
+                    <td class="priority-medium">P1</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>23</td>
+                    <td>创建求职策略 Skill</td>
+                    <td>新增</td>
+                    <td><code>skills/bundled/job_strategy/</code></td>
+                    <td>P3</td>
+                    <td class="priority-low">P2</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>24</td>
+                    <td>创建系统设计问答 Skill</td>
+                    <td>新增</td>
+                    <td><code>skills/bundled/system_design/</code></td>
+                    <td>P3</td>
+                    <td class="priority-low">P2</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>25</td>
+                    <td>创建八股文题库 Skill</td>
+                    <td>新增</td>
+                    <td><code>skills/bundled/cs_knowledge/</code></td>
+                    <td>P3</td>
+                    <td class="priority-low">P2</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>26</td>
+                    <td>创建薪资谈判 Skill</td>
+                    <td>新增</td>
+                    <td><code>skills/bundled/salary_negotiation/</code></td>
+                    <td>P3</td>
+                    <td class="priority-low">P2</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>27</td>
+                    <td>实现招聘平台岗位采集器</td>
+                    <td>新增</td>
+                    <td><code>rag/sources/job_scraper.py</code></td>
+                    <td>P4</td>
+                    <td class="priority-medium">P1</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>28</td>
+                    <td>实现面经采集器</td>
+                    <td>新增</td>
+                    <td><code>rag/sources/interview_scraper.py</code></td>
+                    <td>P4</td>
+                    <td class="priority-medium">P1</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>29</td>
+                    <td>实现公司信息采集器</td>
+                    <td>新增</td>
+                    <td><code>rag/sources/company_scraper.py</code></td>
+                    <td>P4</td>
+                    <td class="priority-low">P2</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>30</td>
+                    <td>实现本地知识导入器</td>
+                    <td>新增</td>
+                    <td><code>rag/sources/local_importer.py</code></td>
+                    <td>P4</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>31</td>
+                    <td>新增 job-hunt CLI 子命令组</td>
+                    <td>修改</td>
+                    <td><code>cli.py + jobhunt/cli.py</code></td>
+                    <td>P5</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>32</td>
+                    <td>扩展配置模型 (rag/job_hunt/scraping)</td>
+                    <td>修改</td>
+                    <td><code>config/settings.py</code></td>
+                    <td>P5</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>33</td>
+                    <td>调整权限策略（RAG只读/爬虫确认）</td>
+                    <td>修改</td>
+                    <td><code>permissions/checker.py</code></td>
+                    <td>P5</td>
+                    <td class="priority-medium">P1</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>34</td>
+                    <td>更新 pyproject.toml 依赖</td>
+                    <td>修改</td>
+                    <td><code>pyproject.toml</code></td>
+                    <td>P5</td>
+                    <td class="priority-high">P0</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>35</td>
+                    <td>增强输出渲染（表格/图表/面板）</td>
+                    <td>修改</td>
+                    <td><code>ui/output.py</code></td>
+                    <td>P5</td>
+                    <td class="priority-low">P2</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>36</td>
+                    <td>集成定时任务（岗位推送/投递提醒）</td>
+                    <td>复用</td>
+                    <td><code>services/cron.py + channels/</code></td>
+                    <td>P5</td>
+                    <td class="priority-low">P2</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>37</td>
+                    <td>编写初始化引导 (oh job-hunt setup)</td>
+                    <td>新增</td>
+                    <td><code>jobhunt/setup.py</code></td>
+                    <td>P5</td>
+                    <td class="priority-medium">P1</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+                <tr>
+                    <td>38</td>
+                    <td>编写单元测试（RAG/工具/匹配）</td>
+                    <td>新增</td>
+                    <td><code>tests/test_rag/ test_tools/</code></td>
+                    <td>全程</td>
+                    <td class="priority-medium">P1</td>
+                    <td><span class="check-box"></span></td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+    </section>
+
+    <!-- ===== 数据流说明 ===== -->
+    <section class="section">
+        <div class="section-header">
+            <div class="section-icon bg-blue">🔄</div>
+            <h2>核心数据流</h2>
+        </div>
+
+        <div class="info-box" style="border-left-color: var(--accent-cyan);">
+            <strong style="color: var(--accent-cyan);">场景示例：</strong>用户说 "帮我找北京 Java 后端 3 年经验的岗位，对比我的简历匹配度"
+        </div>
+
+        <div class="arch-diagram">
+            <div class="arch-flow" style="min-width: 700px;">
+                <div class="arch-layer">
+                    <div class="arch-layer-label">① 用户输入</div>
+                    <div class="arch-boxes">
+                        <div class="arch-box bg-blue">"找北京 Java 3年岗位，匹配简历"</div>
+                    </div>
+                </div>
+                <div class="arch-layer">
+                    <div class="arch-layer-label">② RAG 检索</div>
+                    <div class="arch-boxes">
+                        <div class="arch-box bg-green">向量检索 jobs Collection</div>
+                        <div class="arch-box bg-green">向量检索 resumes Collection</div>
+                    </div>
+                </div>
+                <div class="arch-layer">
+                    <div class="arch-layer-label">③ 工具调用</div>
+                    <div class="arch-boxes">
+                        <div class="arch-box bg-cyan">job_match (简历↔岗位)</div>
+                        <div class="arch-box bg-cyan">skill_gap_analyze</div>
+                    </div>
+                </div>
+                <div class="arch-layer">
+                    <div class="arch-layer-label">④ LLM 分析</div>
+                    <div class="arch-boxes">
+                        <div class="arch-box bg-orange">QueryEngine 生成匹配报告</div>
+                    </div>
+                </div>
+                <div class="arch-layer">
+                    <div class="arch-layer-label">⑤ 结果输出</div>
+                    <div class="arch-boxes">
+                        <div class="arch-box bg-pink">岗位列表 (匹配度排序)</div>
+                        <div class="arch-box bg-pink">差距分析 (技能/经验)</div>
+                        <div class="arch-box bg-pink">投递建议</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== 注意事项 ===== -->
+    <section class="section">
+        <div class="section-header">
+            <div class="section-icon bg-red">⚠️</div>
+            <h2>注意事项与风险</h2>
+        </div>
+
+        <div class="card-grid">
+            <div class="card color-red">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">爬虫合规性</div>
+                    </div>
+                    <span class="card-badge" style="background:rgba(248,81,73,0.15);color:var(--accent-red);border:1px solid rgba(248,81,73,0.3)">风险</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>遵守目标网站 robots.txt 和 ToS</li>
+                        <li>请求频率控制在合理范围</li>
+                        <li>仅采集公开信息，不存储个人隐私</li>
+                        <li>考虑使用官方 API 替代爬虫</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card color-red">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Embedding 成本</div>
+                    </div>
+                    <span class="card-badge" style="background:rgba(248,81,73,0.15);color:var(--accent-red);border:1px solid rgba(248,81,73,0.3)">风险</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>在线 Embedding 有 API 调用费用</li>
+                        <li>大批量摄入建议使用本地模型</li>
+                        <li>缓存层避免重复计算</li>
+                        <li>增量更新策略减少全量重建</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card color-red">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">上下文 Token 预算</div>
+                    </div>
+                    <span class="card-badge" style="background:rgba(248,81,73,0.15);color:var(--accent-red);border:1px solid rgba(248,81,73,0.3)">风险</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>RAG 注入内容占用上下文窗口</li>
+                        <li>设置硬上限（不超过 25%）</li>
+                        <li>与现有压缩系统 (compact) 协同</li>
+                        <li>检索结果摘要化，不全量注入</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card color-red">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">隐私数据保护</div>
+                    </div>
+                    <span class="card-badge" style="background:rgba(248,81,73,0.15);color:var(--accent-red);border:1px solid rgba(248,81,73,0.3)">风险</span>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>简历含个人信息（姓名/电话/邮箱）</li>
+                        <li>向量库存储需脱敏或加密</li>
+                        <li>不将隐私数据发送到外部 API</li>
+                        <li>本地优先：ChromaDB + 本地 Embedding</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== 总结 ===== -->
+    <section class="section">
+        <div class="info-box" style="border-left-color: var(--accent-green); background: rgba(63, 185, 80, 0.05);">
+            <strong style="color: var(--accent-green);">改造总结：</strong>
+            本方案以 <strong>最小侵入</strong> 为原则，复用 OpenHarness 的 Agent Loop、工具注册、权限检查、多 Provider、记忆系统等成熟基础设施，仅在三个层面进行扩展：
+            <br><br>
+            <strong>1. 知识层</strong> — 新增 RAG 模块（向量库 + Embedding + 检索器），赋予 Agent 领域知识检索能力<br>
+            <strong>2. 工具层</strong> — 新增 12+ 求职专用工具（简历/岗位/面试/薪资/公司/投递等），覆盖求职全流程<br>
+            <strong>3. 提示词层</strong> — 修改系统提示词和上下文组装，注入求职领域知识和 RAG 检索结果
+            <br><br>
+            改造后的 Agent 能够：理解用户求职意图 → 检索知识库 → 调用专用工具 → 生成结构化建议 → 持续追踪进度。
+        </div>
+    </section>
+
+</div>
+
+</body>
+</html>
