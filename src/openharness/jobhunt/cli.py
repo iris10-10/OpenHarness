@@ -90,6 +90,33 @@ def chat(
     asyncio.run(run_repl(prompt=prompt, cwd=str(_cwd())))
 
 
+@jobhunt_app.command("web")
+def web(
+    host: Annotated[str, typer.Option("--host", help="Host to bind.")] = "127.0.0.1",
+    port: Annotated[int, typer.Option("--port", "-p", min=1, max=65535, help="Port to bind.")] = 8000,
+    reload: Annotated[bool, typer.Option("--reload/--no-reload", help="Enable uvicorn reload.")] = False,
+    static_dir: Annotated[
+        Path | None,
+        typer.Option("--static-dir", exists=True, file_okay=False, help="Built jobhunt-web/dist directory."),
+    ] = None,
+) -> None:
+    """Start the FastAPI server for the job-hunt Web UI."""
+    try:
+        import uvicorn
+    except ModuleNotFoundError as exc:
+        console.print(
+            "[red]Web dependencies are not installed.[/] "
+            "Run `uv run --extra web oh job-hunt web` or install `openharness-ai[web]`."
+        )
+        raise typer.Exit(1) from exc
+
+    from openharness.jobhunt.api.app import create_app
+
+    app = create_app(static_dir=static_dir)
+    console.print(f"Starting job-hunt Web UI on http://{host}:{port}")
+    uvicorn.run(app, host=host, port=port, reload=reload)
+
+
 @jobhunt_app.command("search")
 def search_jobs(
     query: Annotated[str, typer.Option("--query", "-q", help="Search query.")] = "",

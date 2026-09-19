@@ -1,0 +1,46 @@
+{
+  "basic": {
+    "current_city": "杭州",
+    "target_cities": [
+      "杭州",
+      "上海"
+    ],
+    "years_of_experience": 6.5,
+    "current_title": "Python 后端开发工程师"
+  },
+  "skills": {
+    "technical": [
+      {
+        "name": "Python",
+        "level": "熟练"
+      },
+      {
+        "name": "FastAPI",
+        "level": "熟练"
+      },
+      {
+        "name": "MySQL",
+        "level": "熟练"
+      },
+      {
+        "name": "Redis",
+        "level": "熟练"
+      },
+      {
+        "name": "Docker",
+        "level": "了解"
+      },
+      {
+        "name": "Kubernetes",
+        "level": "了解"
+      }
+    ]
+  },
+  "education": {
+    "degree": "本科"
+  },
+  "preferences": {
+    "expected_salary_min": 30000,
+    "expected_salary_max": 45000
+  }
+}

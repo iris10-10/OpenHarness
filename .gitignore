@@ -27,6 +27,10 @@ htmlcov/
 # React TUI frontend
 frontend/terminal/node_modules/
 
+# Job-hunt Web UI frontend
+jobhunt-web/node_modules/
+jobhunt-web/tsconfig.tsbuildinfo
+
 # User data (never commit API keys or session data)
 .openharness/
 react_tui_smoke.txt

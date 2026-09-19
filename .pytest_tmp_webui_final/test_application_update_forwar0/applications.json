@@ -1,0 +1,33 @@
+[
+  {
+    "id": "app-b41b7692",
+    "company": "杭州星辰科技有限公司",
+    "position": "Python 后端开发工程师",
+    "channel": "其他",
+    "applied_date": "2026-09-19",
+    "status": "HR面",
+    "status_history": [
+      {
+        "status": "已投递",
+        "date": "2026-09-19",
+        "note": ""
+      },
+      {
+        "status": "简历筛选中",
+        "date": "2026-09-19",
+        "note": "HR 已收简历"
+      },
+      {
+        "status": "HR面",
+        "date": "2026-09-19",
+        "note": ""
+      }
+    ],
+    "notes": [
+      "HR 已收简历"
+    ],
+    "created_at": "2026-09-19T12:34:52Z",
+    "updated_at": "2026-09-19T12:34:52Z",
+    "last_update_date": "2026-09-19"
+  }
+]

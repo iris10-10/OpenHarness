@@ -1,0 +1,31 @@
+[
+  {
+    "id": "app-059ed701",
+    "company": "杭州星辰科技有限公司",
+    "position": "Python 后端开发工程师",
+    "channel": "其他",
+    "applied_date": "2026-09-19",
+    "status": "已拒绝",
+    "status_history": [
+      {
+        "status": "已投递",
+        "date": "2026-09-19",
+        "note": ""
+      },
+      {
+        "status": "一面",
+        "date": "2026-09-19",
+        "note": ""
+      },
+      {
+        "status": "已拒绝",
+        "date": "2026-09-19",
+        "note": ""
+      }
+    ],
+    "notes": [],
+    "created_at": "2026-09-19T12:34:52Z",
+    "updated_at": "2026-09-19T12:34:52Z",
+    "last_update_date": "2026-09-19"
+  }
+]

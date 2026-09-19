@@ -1,0 +1,13 @@
+{
+  "basic": {
+    "current_city": "杭州",
+    "current_title": "后端工程师"
+  },
+  "skills": {
+    "technical": [
+      {
+        "name": "Python"
+      }
+    ]
+  }
+}
