@@ -18,7 +18,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from openharness.config.schema import RagSettings
+from openharness.config.schema import JobHuntSettings, RagSettings
 from openharness.hooks.schemas import HookDefinition
 from openharness.mcp.types import McpServerConfig
 from openharness.permissions.modes import PermissionMode
@@ -589,6 +589,7 @@ class Settings(BaseModel):
     sandbox: SandboxSettings = Field(default_factory=SandboxSettings)
     web: WebSettings = Field(default_factory=WebSettings)
     rag: RagSettings = Field(default_factory=RagSettings)
+    job_hunt: JobHuntSettings = Field(default_factory=JobHuntSettings)
     enabled_plugins: dict[str, bool] = Field(default_factory=dict)
     allow_project_plugins: bool = False
     allow_project_skills: bool = True
@@ -1035,6 +1036,26 @@ def _apply_env_overrides(settings: Settings) -> Settings:
         ]
     if web_updates:
         updates["web"] = settings.web.model_copy(update=web_updates)
+
+    job_hunt_updates: dict[str, Any] = {}
+    jobhunt_data_dir = os.environ.get("OPENHARNESS_JOBHUNT_DATA_DIR")
+    if jobhunt_data_dir:
+        job_hunt_updates["data_directory"] = jobhunt_data_dir
+    jobhunt_language = os.environ.get("OPENHARNESS_JOBHUNT_LANGUAGE")
+    if jobhunt_language:
+        job_hunt_updates["language"] = jobhunt_language
+    jobhunt_cities = os.environ.get("OPENHARNESS_JOB_HUNT_TARGET_CITIES")
+    if jobhunt_cities:
+        job_hunt_updates["target_cities"] = [
+            entry.strip() for entry in jobhunt_cities.split(",") if entry.strip()
+        ]
+    jobhunt_positions = os.environ.get("OPENHARNESS_JOB_HUNT_TARGET_POSITIONS")
+    if jobhunt_positions:
+        job_hunt_updates["target_positions"] = [
+            entry.strip() for entry in jobhunt_positions.split(",") if entry.strip()
+        ]
+    if job_hunt_updates:
+        updates["job_hunt"] = settings.job_hunt.model_copy(update=job_hunt_updates)
 
     if not updates:
         return settings

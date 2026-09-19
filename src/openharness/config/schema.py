@@ -170,3 +170,50 @@ class RagSettings(BaseModel):
     embedding: RagEmbeddingSettings = Field(default_factory=RagEmbeddingSettings)
     chunking: RagChunkingSettings = Field(default_factory=RagChunkingSettings)
     retrieval: RagRetrievalSettings = Field(default_factory=RagRetrievalSettings)
+
+
+# ---------------------------------------------------------------------------
+# 求职领域配置（Phase 2）
+# ---------------------------------------------------------------------------
+
+
+class JobHuntMatchingSettings(BaseModel):
+    """加权匹配与推荐阈值配置（权重会自动归一化）。"""
+
+    weight_skills: float = 0.35
+    weight_experience: float = 0.20
+    weight_education: float = 0.10
+    weight_projects: float = 0.15
+    weight_soft_skills: float = 0.10
+    weight_other: float = 0.10
+    freshness_days: int = 30  # 岗位发布时间在此天数内享受新鲜度加成
+    freshness_boost: float = 0.10
+    match_threshold: float = 65.0  # “匹配”建议的最低总分
+    safety_threshold: float = 80.0  # “保底”建议的最低总分
+    top_k: int = 10  # 岗位检索默认返回条数
+
+
+class JobHuntReminderSettings(BaseModel):
+    """投递跟进提醒配置。"""
+
+    follow_up_days: int = 7  # 超过 N 天未跟进则提醒
+    stale_days: int = 14  # 超过 N 天无状态变化视为停滞
+
+
+class JobHuntSettings(BaseModel):
+    """求职领域配置：存储位置、语言、用户偏好与匹配参数。
+
+    ``expected_salary_min`` / ``expected_salary_max`` 单位为 K（月薪），与
+    配置文件中 ``20-40`` 的惯用写法一致。
+    """
+
+    data_directory: str = ""  # 空 → <data_dir>/jobhunt
+    language: str = "zh"
+    target_cities: list[str] = Field(default_factory=list)
+    target_positions: list[str] = Field(default_factory=list)
+    expected_salary_min: int | None = None
+    expected_salary_max: int | None = None
+    years_of_experience: float | None = None
+    default_company_types: list[str] = Field(default_factory=list)
+    matching: JobHuntMatchingSettings = Field(default_factory=JobHuntMatchingSettings)
+    reminder: JobHuntReminderSettings = Field(default_factory=JobHuntReminderSettings)
