@@ -69,6 +69,7 @@ openharness = "openharness.cli:app"
 oh = "openharness.cli:app"
 openh = "openharness.cli:app"
 ohmo = "ohmo.cli:app"
+oh-jobhunt = "openharness.jobhunt.cli:jobhunt_app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/openharness", "ohmo"]

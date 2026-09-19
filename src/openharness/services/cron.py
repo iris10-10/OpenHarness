@@ -4,15 +4,46 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from croniter import croniter
 
 from openharness.config.paths import get_cron_registry_path
 from openharness.utils.file_lock import exclusive_file_lock
 from openharness.utils.fs import atomic_write_text
+
+JOBHUNT_CRON_JOBS: tuple[dict[str, Any], ...] = (
+    {
+        "name": "jobhunt.daily-jobs",
+        "schedule": "0 1 * * *",
+        "command": "oh job-hunt cron run daily-jobs",
+        "description": "每日岗位推送：按求职偏好检索新岗位（北京时间 9:00）",
+        "payload": {"kind": "jobhunt", "task": "daily-jobs"},
+    },
+    {
+        "name": "jobhunt.follow-ups",
+        "schedule": "0 2 * * *",
+        "command": "oh job-hunt cron run follow-ups",
+        "description": "投递跟进提醒：检查超过跟进窗口的投递（北京时间 10:00）",
+        "payload": {"kind": "jobhunt", "task": "follow-ups"},
+    },
+    {
+        "name": "jobhunt.interview-digest",
+        "schedule": "0 1 * * 1",
+        "command": "oh job-hunt cron run interview-digest",
+        "description": "面经更新推送：汇总目标公司的新面经（北京时间周一 9:00）",
+        "payload": {"kind": "jobhunt", "task": "interview-digest"},
+    },
+    {
+        "name": "jobhunt.data-sync",
+        "schedule": "0 18 * * *",
+        "command": "oh job-hunt cron run data-sync",
+        "description": "数据同步：爬虫开启时增量采集新数据（北京时间 2:00）",
+        "payload": {"kind": "jobhunt", "task": "data-sync"},
+    },
+)
 
 
 def _cron_lock_path() -> Path:
@@ -51,7 +82,7 @@ def validate_timezone(tz: str | None) -> bool:
         return True
     try:
         ZoneInfo(tz)
-    except Exception:
+    except ZoneInfoNotFoundError:
         return False
     return True
 
@@ -135,3 +166,79 @@ def mark_job_run(name: str, *, success: bool) -> None:
                     job["next_run"] = next_run_time(schedule, now, tz=job.get("timezone") or job.get("tz")).isoformat()
                 save_cron_jobs(jobs)
                 return
+
+
+def install_jobhunt_cron_jobs() -> list[str]:
+    """Install the default job-hunt cron jobs and return their names."""
+    names: list[str] = []
+    for job in JOBHUNT_CRON_JOBS:
+        upsert_cron_job(dict(job))
+        names.append(str(job["name"]))
+    return names
+
+
+def run_jobhunt_cron_task(task: str) -> dict[str, Any]:
+    """Run a lightweight job-hunt cron task implementation synchronously.
+
+    The scheduler still owns process execution and notifications. This helper
+    keeps the default job commands useful even without a running model session.
+    """
+    from openharness.config.settings import load_settings
+    from openharness.jobhunt.storage import JobHuntStore, resolve_jobhunt_dir
+
+    settings = load_settings()
+    directory = resolve_jobhunt_dir(configured=settings.job_hunt.data_directory)
+    store = JobHuntStore(directory)
+
+    if task == "daily-jobs":
+        positions = settings.job_hunt.target_positions or ["工程师"]
+        cities = settings.job_hunt.target_cities or ["不限"]
+        return {
+            "task": task,
+            "status": "ok",
+            "message": "岗位推送任务已生成检索条件",
+            "queries": [
+                {"position": position, "city": city}
+                for position in positions
+                for city in cities
+            ],
+        }
+    if task == "follow-ups":
+        from openharness.tools.application_tracker_tool import _TERMINAL_STATUSES, _days_since
+
+        reminders: list[dict[str, Any]] = []
+        follow_up_days = settings.job_hunt.reminder.follow_up_days
+        for record in store.load_applications():
+            if str(record.get("status", "")) in _TERMINAL_STATUSES:
+                continue
+            last = str(record.get("last_update_date") or record.get("applied_date") or "")
+            age = _days_since(last) if last else None
+            if age is not None and age >= follow_up_days:
+                reminders.append(
+                    {
+                        "id": record.get("id", ""),
+                        "company": record.get("company", ""),
+                        "position": record.get("position", ""),
+                        "days_since_update": age,
+                    }
+                )
+        return {"task": task, "status": "ok", "reminders": reminders, "count": len(reminders)}
+    if task == "interview-digest":
+        profile = store.load_profile()
+        preferences = profile.get("preferences") if isinstance(profile.get("preferences"), dict) else {}
+        companies = settings.job_hunt.default_company_types
+        return {
+            "task": task,
+            "status": "ok",
+            "message": "面经更新任务已准备",
+            "target_positions": preferences.get("target_positions") or settings.job_hunt.target_positions,
+            "target_company_types": companies,
+        }
+    if task == "data-sync":
+        return {
+            "task": task,
+            "status": "skipped" if not settings.scraping.enabled else "ok",
+            "scraping_enabled": settings.scraping.enabled,
+            "message": "scraping.enabled=false，跳过采集" if not settings.scraping.enabled else "采集任务已准备",
+        }
+    raise ValueError(f"Unknown job-hunt cron task: {task}")

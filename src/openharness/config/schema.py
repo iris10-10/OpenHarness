@@ -192,10 +192,13 @@ class ScrapingSettings(BaseModel):
 
     enabled: bool = False
     respect_robots_txt: bool = True
+    request_delay_min: float = 2.0
+    request_delay_max: float = 5.0
     max_requests_per_minute: int = 10
     max_retries: int = 3
     backoff_base_seconds: float = 0.5
     timeout_seconds: float = 30.0
+    proxy: str = ""
     proxy_http: str = ""
     proxy_https: str = ""
     user_agents: list[str] = Field(

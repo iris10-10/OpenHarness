@@ -1,0 +1,21 @@
+[
+  {
+    "id": "app-bbef14e3",
+    "company": "ByteDance",
+    "position": "Backend",
+    "channel": "内推",
+    "applied_date": "2026-09-19",
+    "status": "已投递",
+    "status_history": [
+      {
+        "status": "已投递",
+        "date": "2026-09-19",
+        "note": ""
+      }
+    ],
+    "notes": [],
+    "created_at": "2026-09-19T10:39:34Z",
+    "updated_at": "2026-09-19T10:39:34Z",
+    "last_update_date": "2026-09-19"
+  }
+]

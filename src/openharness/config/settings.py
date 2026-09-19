@@ -1038,10 +1038,63 @@ def _apply_env_overrides(settings: Settings) -> Settings:
     if web_updates:
         updates["web"] = settings.web.model_copy(update=web_updates)
 
+    rag_updates: dict[str, Any] = {}
+    rag_enabled = os.environ.get("OPENHARNESS_RAG_ENABLED")
+    if rag_enabled is not None:
+        rag_updates["enabled"] = _parse_bool_env(rag_enabled)
+    rag_data_dir = os.environ.get("OPENHARNESS_RAG_DATA_DIR")
+    if rag_data_dir:
+        rag_updates["persist_directory"] = rag_data_dir
+    rag_provider = os.environ.get("OPENHARNESS_RAG_EMBEDDING_PROVIDER")
+    rag_embedding_updates: dict[str, Any] = {}
+    if rag_provider:
+        rag_embedding_updates["provider"] = rag_provider
+    rag_openai_model = os.environ.get("OPENHARNESS_RAG_EMBEDDING_OPENAI_MODEL")
+    if rag_openai_model:
+        rag_embedding_updates["openai_model"] = rag_openai_model
+    rag_local_model = os.environ.get("OPENHARNESS_RAG_EMBEDDING_LOCAL_MODEL")
+    if rag_local_model:
+        rag_embedding_updates["local_model"] = rag_local_model
+    rag_cache = os.environ.get("OPENHARNESS_RAG_EMBEDDING_CACHE_ENABLED")
+    if rag_cache is not None:
+        rag_embedding_updates["cache_enabled"] = _parse_bool_env(rag_cache)
+    if rag_embedding_updates:
+        rag_updates["embedding"] = settings.rag.embedding.model_copy(
+            update=rag_embedding_updates
+        )
+    rag_top_k = os.environ.get("OPENHARNESS_RAG_RETRIEVAL_TOP_K")
+    rag_top_n = os.environ.get("OPENHARNESS_RAG_RETRIEVAL_TOP_N")
+    rag_alpha = os.environ.get("OPENHARNESS_RAG_RETRIEVAL_HYBRID_ALPHA")
+    rag_context_ratio = os.environ.get("OPENHARNESS_RAG_RETRIEVAL_CONTEXT_TOKEN_RATIO")
+    rag_retrieval_updates: dict[str, Any] = {}
+    if rag_top_k:
+        rag_retrieval_updates["vector_top_k"] = int(rag_top_k)
+    if rag_top_n:
+        rag_retrieval_updates["final_top_n"] = int(rag_top_n)
+    if rag_alpha:
+        rag_retrieval_updates["hybrid_alpha"] = float(rag_alpha)
+    if rag_context_ratio:
+        rag_retrieval_updates["context_budget_ratio"] = float(rag_context_ratio)
+    if rag_retrieval_updates:
+        rag_updates["retrieval"] = settings.rag.retrieval.model_copy(
+            update=rag_retrieval_updates
+        )
+    if rag_updates:
+        updates["rag"] = settings.rag.model_copy(update=rag_updates)
+
     scraping_updates: dict[str, Any] = {}
     scraping_enabled = os.environ.get("OPENHARNESS_SCRAPING_ENABLED")
     if scraping_enabled is not None:
         scraping_updates["enabled"] = _parse_bool_env(scraping_enabled)
+    scraping_delay_min = os.environ.get("OPENHARNESS_SCRAPING_REQUEST_DELAY_MIN")
+    if scraping_delay_min:
+        scraping_updates["request_delay_min"] = float(scraping_delay_min)
+    scraping_delay_max = os.environ.get("OPENHARNESS_SCRAPING_REQUEST_DELAY_MAX")
+    if scraping_delay_max:
+        scraping_updates["request_delay_max"] = float(scraping_delay_max)
+    scraping_proxy = os.environ.get("OPENHARNESS_SCRAPING_PROXY")
+    if scraping_proxy:
+        scraping_updates["proxy"] = scraping_proxy
     scraping_proxy_http = os.environ.get("OPENHARNESS_SCRAPING_PROXY_HTTP")
     if scraping_proxy_http:
         scraping_updates["proxy_http"] = scraping_proxy_http
@@ -1082,6 +1135,20 @@ def _apply_env_overrides(settings: Settings) -> Settings:
         job_hunt_updates["target_positions"] = [
             entry.strip() for entry in jobhunt_positions.split(",") if entry.strip()
         ]
+    jobhunt_salary_min = os.environ.get("OPENHARNESS_JOB_HUNT_EXPECTED_SALARY_MIN")
+    if jobhunt_salary_min:
+        job_hunt_updates["expected_salary_min"] = int(jobhunt_salary_min)
+    jobhunt_salary_max = os.environ.get("OPENHARNESS_JOB_HUNT_EXPECTED_SALARY_MAX")
+    if jobhunt_salary_max:
+        job_hunt_updates["expected_salary_max"] = int(jobhunt_salary_max)
+    jobhunt_years = os.environ.get("OPENHARNESS_JOB_HUNT_YEARS_OF_EXPERIENCE")
+    if jobhunt_years:
+        job_hunt_updates["years_of_experience"] = float(jobhunt_years)
+    jobhunt_company_types = os.environ.get("OPENHARNESS_JOB_HUNT_DEFAULT_COMPANY_TYPES")
+    if jobhunt_company_types:
+        job_hunt_updates["default_company_types"] = [
+            entry.strip() for entry in jobhunt_company_types.split(",") if entry.strip()
+        ]
     if job_hunt_updates:
         updates["job_hunt"] = settings.job_hunt.model_copy(update=job_hunt_updates)
 
@@ -1093,6 +1160,47 @@ def _apply_env_overrides(settings: Settings) -> Settings:
 def _parse_bool_env(value: str) -> bool:
     """Parse a boolean environment override."""
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _normalize_settings_payload(raw: dict[str, Any]) -> dict[str, Any]:
+    """Normalize plan-era job-hunt/RAG config aliases before validation."""
+    normalized = dict(raw)
+
+    rag = normalized.get("rag")
+    if isinstance(rag, dict):
+        rag = dict(rag)
+        if "data_dir" in rag and "persist_directory" not in rag:
+            rag["persist_directory"] = rag.pop("data_dir")
+        retrieval = rag.get("retrieval")
+        if isinstance(retrieval, dict):
+            retrieval = dict(retrieval)
+            aliases = {
+                "top_k": "vector_top_k",
+                "top_n": "final_top_n",
+                "context_token_ratio": "context_budget_ratio",
+            }
+            for source, target in aliases.items():
+                if source in retrieval and target not in retrieval:
+                    retrieval[target] = retrieval.pop(source)
+            rag["retrieval"] = retrieval
+        normalized["rag"] = rag
+
+    scraping = normalized.get("scraping")
+    if isinstance(scraping, dict):
+        scraping = dict(scraping)
+        sources = scraping.get("sources")
+        if isinstance(sources, dict):
+            for source_name, source_value in sources.items():
+                if source_name not in scraping and isinstance(source_value, dict):
+                    scraping[source_name] = source_value
+        proxy = scraping.get("proxy")
+        if proxy and not scraping.get("proxy_http"):
+            scraping["proxy_http"] = proxy
+        if proxy and not scraping.get("proxy_https"):
+            scraping["proxy_https"] = proxy
+        normalized["scraping"] = scraping
+
+    return normalized
 
 
 def load_settings(config_path: Path | None = None) -> Settings:
@@ -1111,6 +1219,7 @@ def load_settings(config_path: Path | None = None) -> Settings:
 
     if config_path.exists():
         raw = json.loads(config_path.read_text(encoding="utf-8"))
+        raw = _normalize_settings_payload(raw) if isinstance(raw, dict) else raw
         settings = Settings.model_validate(raw)
         env_profile = os.environ.get("OPENHARNESS_PROFILE")
         if env_profile:

@@ -1,0 +1,24 @@
+{
+  "basic": {
+    "current_title": "后端开发",
+    "target_cities": [
+      "北京",
+      "上海"
+    ],
+    "years_of_experience": 3.0
+  },
+  "preferences": {
+    "target_positions": [
+      "后端开发"
+    ],
+    "expected_salary_min": 20,
+    "expected_salary_max": 40
+  },
+  "skills": {
+    "technical": [
+      "Python",
+      "Redis",
+      "MySQL"
+    ]
+  }
+}
