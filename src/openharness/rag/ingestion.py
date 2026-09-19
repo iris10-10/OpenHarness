@@ -325,6 +325,18 @@ def _json_to_text(data: Any) -> str:
     return str(data)
 
 
+def _metadata_digest(metadata: Mapping[str, Any] | None) -> str:
+    """Return a stable digest for directory-level metadata."""
+
+    if not metadata:
+        return ""
+    try:
+        payload = json.dumps(dict(metadata), ensure_ascii=False, sort_keys=True, default=str)
+    except TypeError:
+        payload = str(sorted((str(key), str(value)) for key, value in metadata.items()))
+    return content_hash(payload, length=20)
+
+
 def load_document_text(path: str | Path) -> str:
     """Parse a supported document file into plain text."""
     file_path = Path(path)
@@ -454,6 +466,7 @@ class DocumentIngestor:
         *,
         recursive: bool = True,
         extensions: Iterable[str] | None = None,
+        metadata: Mapping[str, Any] | None = None,
     ) -> IngestionReport:
         """Ingest a directory incrementally (hash-based skip for unchanged files)."""
         report = IngestionReport()
@@ -469,6 +482,7 @@ class DocumentIngestor:
         )
         pattern = "**/*" if recursive else "*"
         state = self._load_state()
+        meta_hash = _metadata_digest(metadata)
         seen_keys: set[str] = set()
         for file_path in sorted(
             candidate for candidate in directory_path.glob(pattern) if candidate.is_file()
@@ -484,14 +498,19 @@ class DocumentIngestor:
                 report.errors.append(f"{file_path}: {exc}")
                 continue
             entry = state.get(state_key)
-            if isinstance(entry, dict) and entry.get("hash") == digest:
+            if (
+                isinstance(entry, dict)
+                and entry.get("hash") == digest
+                and str(entry.get("metadata_hash") or "") == meta_hash
+            ):
                 report.files_skipped += 1
                 continue
-            file_report = self.ingest_file(collection, file_path)
+            file_report = self.ingest_file(collection, file_path, metadata=metadata)
             report.merge(file_report)
             if file_report.files_failed == 0 and not file_report.errors:
                 state[state_key] = {
                     "hash": digest,
+                    "metadata_hash": meta_hash,
                     "path": str(file_path),
                     "chunks": file_report.chunks_created,
                     "updated_at": time.time(),

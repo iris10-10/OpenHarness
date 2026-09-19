@@ -18,7 +18,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from openharness.config.schema import JobHuntSettings, RagSettings
+from openharness.config.schema import JobHuntSettings, RagSettings, ScrapingSettings
 from openharness.hooks.schemas import HookDefinition
 from openharness.mcp.types import McpServerConfig
 from openharness.permissions.modes import PermissionMode
@@ -590,6 +590,7 @@ class Settings(BaseModel):
     web: WebSettings = Field(default_factory=WebSettings)
     rag: RagSettings = Field(default_factory=RagSettings)
     job_hunt: JobHuntSettings = Field(default_factory=JobHuntSettings)
+    scraping: ScrapingSettings = Field(default_factory=ScrapingSettings)
     enabled_plugins: dict[str, bool] = Field(default_factory=dict)
     allow_project_plugins: bool = False
     allow_project_skills: bool = True
@@ -1036,6 +1037,33 @@ def _apply_env_overrides(settings: Settings) -> Settings:
         ]
     if web_updates:
         updates["web"] = settings.web.model_copy(update=web_updates)
+
+    scraping_updates: dict[str, Any] = {}
+    scraping_enabled = os.environ.get("OPENHARNESS_SCRAPING_ENABLED")
+    if scraping_enabled is not None:
+        scraping_updates["enabled"] = _parse_bool_env(scraping_enabled)
+    scraping_proxy_http = os.environ.get("OPENHARNESS_SCRAPING_PROXY_HTTP")
+    if scraping_proxy_http:
+        scraping_updates["proxy_http"] = scraping_proxy_http
+    scraping_proxy_https = os.environ.get("OPENHARNESS_SCRAPING_PROXY_HTTPS")
+    if scraping_proxy_https:
+        scraping_updates["proxy_https"] = scraping_proxy_https
+    scraping_max_retries = os.environ.get("OPENHARNESS_SCRAPING_MAX_RETRIES")
+    if scraping_max_retries:
+        scraping_updates["max_retries"] = int(scraping_max_retries)
+    scraping_max_rpm = os.environ.get("OPENHARNESS_SCRAPING_MAX_REQUESTS_PER_MINUTE")
+    if scraping_max_rpm:
+        scraping_updates["max_requests_per_minute"] = int(scraping_max_rpm)
+    scraping_robots = os.environ.get("OPENHARNESS_SCRAPING_RESPECT_ROBOTS_TXT")
+    if scraping_robots is not None:
+        scraping_updates["respect_robots_txt"] = _parse_bool_env(scraping_robots)
+    scraping_agents = os.environ.get("OPENHARNESS_SCRAPING_USER_AGENTS")
+    if scraping_agents:
+        scraping_updates["user_agents"] = [
+            entry.strip() for entry in scraping_agents.split("|") if entry.strip()
+        ]
+    if scraping_updates:
+        updates["scraping"] = settings.scraping.model_copy(update=scraping_updates)
 
     job_hunt_updates: dict[str, Any] = {}
     jobhunt_data_dir = os.environ.get("OPENHARNESS_JOBHUNT_DATA_DIR")

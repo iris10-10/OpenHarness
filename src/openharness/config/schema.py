@@ -173,6 +173,67 @@ class RagSettings(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# 数据源与采集配置（Phase 4）
+# ---------------------------------------------------------------------------
+
+
+class ScrapingSourceSettings(BaseModel):
+    """Per-source crawling controls and optional authentication hints."""
+
+    enabled: bool = False
+    base_url: str = ""
+    cookie: str = ""
+    request_interval_min: float = 1.0
+    request_interval_max: float = 3.0
+
+
+class ScrapingSettings(BaseModel):
+    """Recruiting/interview/company data-source scraping configuration."""
+
+    enabled: bool = False
+    respect_robots_txt: bool = True
+    max_requests_per_minute: int = 10
+    max_retries: int = 3
+    backoff_base_seconds: float = 0.5
+    timeout_seconds: float = 30.0
+    proxy_http: str = ""
+    proxy_https: str = ""
+    user_agents: list[str] = Field(
+        default_factory=lambda: [
+            (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+            ),
+            (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 "
+                "(KHTML, like Gecko) Version/17.4 Safari/605.1.15"
+            ),
+        ]
+    )
+    boss: ScrapingSourceSettings = Field(
+        default_factory=lambda: ScrapingSourceSettings(base_url="https://www.zhipin.com")
+    )
+    lagou: ScrapingSourceSettings = Field(
+        default_factory=lambda: ScrapingSourceSettings(base_url="https://www.lagou.com")
+    )
+    nowcoder: ScrapingSourceSettings = Field(
+        default_factory=lambda: ScrapingSourceSettings(base_url="https://www.nowcoder.com")
+    )
+    leetcode: ScrapingSourceSettings = Field(
+        default_factory=lambda: ScrapingSourceSettings(base_url="https://leetcode.cn")
+    )
+    tianyancha: ScrapingSourceSettings = Field(
+        default_factory=lambda: ScrapingSourceSettings(base_url="https://www.tianyancha.com")
+    )
+    maimai: ScrapingSourceSettings = Field(
+        default_factory=lambda: ScrapingSourceSettings(base_url="https://maimai.cn")
+    )
+    github: ScrapingSourceSettings = Field(
+        default_factory=lambda: ScrapingSourceSettings(enabled=True, base_url="https://api.github.com")
+    )
+
+
+# ---------------------------------------------------------------------------
 # 求职领域配置（Phase 2）
 # ---------------------------------------------------------------------------
 
