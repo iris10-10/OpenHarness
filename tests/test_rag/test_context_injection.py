@@ -101,3 +101,27 @@ def test_prompt_survives_rag_failures(
     )
     assert prompt
     assert "Retrieved Knowledge" not in prompt
+
+
+def test_rag_section_budget_capped_to_15_percent(
+    tmp_path: Path,
+    rag_settings: Settings,
+    seeded_store: VectorStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Phase 3 Token 预算：RAG 检索结果 ≤ 15% 上下文窗口。"""
+    from openharness.prompts.context import _RAG_BUDGET_RATIO
+    from openharness.rag.utils import estimate_tokens
+
+    # 未显式配置 context_window_tokens 时按 16k 回退窗口计算预算
+    assert rag_settings.context_window_tokens is None
+    _patch_factory(monkeypatch, Retriever(seeded_store, default_collection="jobs"))
+
+    prompt = build_runtime_system_prompt(
+        rag_settings, cwd=tmp_path, latest_user_prompt="Python 后端开发", include_project_memory=False
+    )
+    start = prompt.index("# Retrieved Knowledge")
+    end = prompt.find("\n\n#", start)
+    section = prompt[start:] if end == -1 else prompt[start:end]
+    budget = int(16000 * _RAG_BUDGET_RATIO)
+    assert estimate_tokens(section) <= budget
