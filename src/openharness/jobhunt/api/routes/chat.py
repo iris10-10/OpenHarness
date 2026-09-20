@@ -1,85 +1,147 @@
-"""Chat endpoints with SSE streaming."""
+"""Compatibility chat endpoints backed by the generic Web Agent service."""
 
 from __future__ import annotations
 
-import asyncio
 import json
+from collections.abc import AsyncIterator
+from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
-from openharness.jobhunt.api.deps import load_chat_history, save_chat_history
 from openharness.jobhunt.api.schemas import ChatSendRequest
-from openharness.jobhunt.storage import new_record_id, utc_now_iso
+from openharness.web.service import WebAgentError, WebAgentService
+from openharness.web.sessions import WebSessionManager
+from openharness.web_api.deps import get_web_agent_service, get_web_session_manager
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
-def _event(event: str, payload: dict[str, object]) -> str:
+def _event(event: str, payload: dict[str, Any]) -> str:
     return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
 @router.get("/history")
-def history() -> dict[str, object]:
-    return {"messages": load_chat_history()}
+async def history(
+    session_id: str | None = None,
+    manager: WebSessionManager = Depends(get_web_session_manager),
+    service: WebAgentService = Depends(get_web_agent_service),
+) -> dict[str, object]:
+    if session_id:
+        try:
+            return {"session_id": session_id, "messages": service.session_messages(session_id)}
+        except WebAgentError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    sessions = manager.list_metadata()
+    if not sessions:
+        return {"messages": []}
+    latest_id = str(sessions[0]["session_id"])
+    return {"session_id": latest_id, "messages": service.session_messages(latest_id)}
 
 
 @router.delete("/clear")
-def clear() -> dict[str, object]:
-    save_chat_history([])
+async def clear(
+    session_id: str | None = None,
+    manager: WebSessionManager = Depends(get_web_session_manager),
+    service: WebAgentService = Depends(get_web_agent_service),
+) -> dict[str, object]:
+    if session_id:
+        try:
+            return await service.clear(session_id)
+        except WebAgentError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    sessions = manager.list_metadata()
+    if sessions:
+        try:
+            return await service.clear(str(sessions[0]["session_id"]))
+        except WebAgentError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
     return {"ok": True, "messages": []}
 
 
 @router.post("/stop")
-def stop() -> dict[str, object]:
-    return {"ok": True, "message": "本地流式响应已停止或已完成"}
+async def stop(
+    session_id: str | None = None,
+    manager: WebSessionManager = Depends(get_web_session_manager),
+    service: WebAgentService = Depends(get_web_agent_service),
+) -> dict[str, object]:
+    if session_id:
+        try:
+            return await service.cancel(session_id)
+        except WebAgentError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    sessions = manager.list_metadata()
+    if not sessions:
+        return {"ok": True, "cancelled": False}
+    try:
+        return await service.cancel(str(sessions[0]["session_id"]))
+    except WebAgentError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+
+async def _stream_legacy(
+    service: WebAgentService,
+    session_id: str,
+    request: ChatSendRequest,
+) -> AsyncIterator[str]:
+    latest_message: dict[str, Any] | None = None
+    try:
+        async for event, payload in service.open_stream(
+            session_id,
+            request.message,
+            attachments=request.attachments,
+        ):
+            if event == "user_message":
+                yield _event("message", payload)
+            elif event == "assistant_delta":
+                yield _event(
+                    "delta",
+                    {
+                        "id": payload.get("id"),
+                        "delta": payload.get("message", ""),
+                    },
+                )
+            elif event == "assistant_complete":
+                latest_message = payload.get("message")
+            else:
+                yield _event(event, payload)
+        if latest_message is not None:
+            yield _event("done", {"session_id": session_id, "message": latest_message})
+    except WebAgentError as exc:
+        yield _event(
+            "error",
+            {"code": exc.code, "message": exc.message, "recoverable": exc.status_code < 500},
+        )
+        yield _event("done", {"session_id": session_id})
 
 
 @router.post("/send")
-async def send(request: ChatSendRequest) -> StreamingResponse:
+async def send(
+    request: ChatSendRequest,
+    manager: WebSessionManager = Depends(get_web_session_manager),
+    service: WebAgentService = Depends(get_web_agent_service),
+) -> StreamingResponse:
     prompt = request.message.strip()
     if not prompt:
         raise HTTPException(status_code=400, detail="message must be non-empty")
-
-    user_message = {
-        "id": new_record_id("msg"),
-        "role": "user",
-        "content": prompt,
-        "created_at": utc_now_iso(),
-        "tools": [],
-    }
-    assistant_id = new_record_id("msg")
-    history = [*load_chat_history(), user_message]
-    save_chat_history(history)
-
-    response = (
-        "我已收到你的求职问题。\n\n"
-        f"> {prompt}\n\n"
-        "建议先把目标拆成三步：确认岗位关键词、匹配简历证据、安排投递跟进。"
-        "你可以继续使用 `/search` 搜岗位、`/match` 看匹配度，或把 JD/简历贴进来做更细的分析。"
+    if request.session_id:
+        session_id = request.session_id
+        try:
+            manager.metadata(session_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="session not found") from exc
+    else:
+        try:
+            session = await manager.create_session(cwd=request.cwd, title=prompt[:80])
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        session_id = session.session_id
+    return StreamingResponse(
+        _stream_legacy(
+            service,
+            session_id,
+            request,
+        ),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
-
-    async def stream():
-        yield _event("message", {"message": user_message})
-        content = ""
-        for token in response:
-            content += token
-            yield _event("delta", {"id": assistant_id, "delta": token})
-            await asyncio.sleep(0.003)
-        assistant_message = {
-            "id": assistant_id,
-            "role": "assistant",
-            "content": content,
-            "created_at": utc_now_iso(),
-            "tools": [
-                {
-                    "name": "local_jobhunt_context",
-                    "status": "completed",
-                    "summary": "读取本地求职画像、岗位库和投递看板的可用上下文。",
-                }
-            ],
-        }
-        save_chat_history([*history, assistant_message])
-        yield _event("done", {"message": assistant_message})
-
-    return StreamingResponse(stream(), media_type="text/event-stream")

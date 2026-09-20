@@ -17,6 +17,9 @@ class ChatMessage(BaseModel):
 
 class ChatSendRequest(BaseModel):
     message: str
+    session_id: str | None = None
+    attachments: list[dict[str, Any]] = Field(default_factory=list)
+    cwd: str | None = None
 
 
 class JobCreateRequest(BaseModel):

@@ -274,6 +274,7 @@ def _print_auth_resolution_error(settings, exc: Exception) -> None:
 async def build_runtime(
     *,
     prompt: str | None = None,
+    session_id: str | None = None,
     cwd: str | None = None,
     model: str | None = None,
     max_turns: int | None = None,
@@ -374,7 +375,7 @@ async def build_runtime(
     )
     from uuid import uuid4
 
-    session_id = uuid4().hex[:12]
+    runtime_session_id = session_id or uuid4().hex[:12]
 
     restored_metadata = {
         "permission_mode": settings.permission.mode.value,
@@ -420,7 +421,7 @@ async def build_runtime(
             "bridge_manager": bridge_manager,
             "extra_skill_dirs": normalized_skill_dirs,
             "extra_plugin_roots": normalized_plugin_roots,
-            "session_id": session_id,
+            "session_id": runtime_session_id,
             "edit_approval_prompt": edit_approval_prompt,
             "vision_model_config": _resolve_vision_config(settings),
             "image_generation_config": _resolve_image_generation_config(settings),
@@ -440,7 +441,7 @@ async def build_runtime(
     if settings.sandbox.enabled and settings.sandbox.backend == "docker":
         from openharness.sandbox.session import start_docker_sandbox
 
-        await start_docker_sandbox(settings, session_id, Path(cwd))
+        await start_docker_sandbox(settings, runtime_session_id, Path(cwd))
 
     return RuntimeBundle(
         api_client=resolved_api_client,
@@ -460,7 +461,7 @@ async def build_runtime(
         ),
         external_api_client=api_client is not None,
         enforce_max_turns=enforce_max_turns or max_turns is not None,
-        session_id=session_id,
+        session_id=runtime_session_id,
         settings_overrides=settings_overrides,
         session_backend=session_backend or DEFAULT_SESSION_BACKEND,
         extra_skill_dirs=normalized_skill_dirs,

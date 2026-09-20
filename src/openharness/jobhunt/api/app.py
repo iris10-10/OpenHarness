@@ -18,10 +18,15 @@ from openharness.jobhunt.api.routes import (
     rag,
     resumes,
 )
+from openharness.web import WebAgentService, WebSessionManager
+from openharness.web_api.routes.agent import router as agent_router
 
 
 def create_app(*, static_dir: str | Path | None = None) -> FastAPI:
     app = FastAPI(title="OpenHarness Job Hunt Web API", version="0.2.0")
+    web_session_manager = WebSessionManager()
+    app.state.web_session_manager = web_session_manager
+    app.state.web_agent_service = WebAgentService(web_session_manager)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -35,7 +40,10 @@ def create_app(*, static_dir: str | Path | None = None) -> FastAPI:
         return {"status": "ok", "service": "jobhunt-web"}
 
     api = FastAPI()
+    api.state.web_session_manager = web_session_manager
+    api.state.web_agent_service = app.state.web_agent_service
     api.include_router(chat.router)
+    api.include_router(agent_router)
     api.include_router(jobs.router)
     api.include_router(applications.router)
     api.include_router(resumes.router)
@@ -43,6 +51,10 @@ def create_app(*, static_dir: str | Path | None = None) -> FastAPI:
     api.include_router(profile.router)
     api.include_router(rag.router)
     app.mount("/api", api)
+
+    @app.on_event("shutdown")
+    async def shutdown_web_agent() -> None:
+        await web_session_manager.shutdown()
 
     resolved_static = Path(static_dir) if static_dir else Path.cwd() / "jobhunt-web" / "dist"
     if resolved_static.exists():
