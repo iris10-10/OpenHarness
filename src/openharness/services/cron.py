@@ -9,6 +9,7 @@ from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from croniter import croniter
+from dateutil.tz import gettz
 
 from openharness.config.paths import get_cron_registry_path
 from openharness.utils.file_lock import exclusive_file_lock
@@ -76,12 +77,23 @@ def validate_cron_expression(expression: str) -> bool:
     return croniter.is_valid(expression)
 
 
+def _get_timezone(tz: str) -> Any:
+    """Resolve an IANA timezone using system data or dateutil's fallback data."""
+    try:
+        return ZoneInfo(tz)
+    except ZoneInfoNotFoundError:
+        fallback = gettz(tz)
+        if fallback is None:
+            raise ZoneInfoNotFoundError(tz) from None
+        return fallback
+
+
 def validate_timezone(tz: str | None) -> bool:
     """Return True if *tz* is a valid IANA timezone or empty."""
     if not tz:
         return True
     try:
-        ZoneInfo(tz)
+        _get_timezone(tz)
     except ZoneInfoNotFoundError:
         return False
     return True
@@ -95,7 +107,7 @@ def next_run_time(expression: str, base: datetime | None = None, tz: str | None 
     """
     base = base or datetime.now(timezone.utc)
     if tz:
-        local_base = base.astimezone(ZoneInfo(tz))
+        local_base = base.astimezone(_get_timezone(tz))
         local_next = croniter(expression, local_base).get_next(datetime)
         return local_next.astimezone(timezone.utc)
     return croniter(expression, base).get_next(datetime)

@@ -64,7 +64,7 @@ _TEXT_PREVIEW_BYTES = 4096
 _TEXT_PREVIEW_CHARS = 900
 _BINARY_HEAD_BYTES = 32
 _FINAL_REPLY_IMAGE_PATH_RE = re.compile(
-    r"(?P<path>(?:[A-Za-z]:[\\/]|/)[^\r\n`\"'<>|?*\x00]+?\.(?:png|jpe?g|webp|gif|bmp))",
+    r"(?P<path>(?:[A-Za-z]:[\\/]|/)[^\r\n`\"<>|?*\x00]+?\.(?:png|jpe?g|webp|gif|bmp))",
     re.IGNORECASE,
 )
 _IMAGE_FALLBACK_NOTE = (

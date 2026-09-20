@@ -95,7 +95,6 @@ async def _terminate_process(process: asyncio.subprocess.Process, *, force: bool
     #强制终止
     if force:
         process.kill()
-        await process.wait()
         return
     #优雅终止
     process.terminate()

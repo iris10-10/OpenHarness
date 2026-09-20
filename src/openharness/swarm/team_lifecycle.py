@@ -270,7 +270,11 @@ class TeamFile:
         path.parent.mkdir(parents=True, exist_ok=True)#确保目录存在
         tmp = path.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
-        tmp.rename(path)
+        # ``Path.rename`` cannot replace an existing file on Windows.
+        # ``os.replace`` preserves the atomic swap semantics cross-platform.
+        import os
+
+        os.replace(tmp, path)
 
     @classmethod
     def load(cls, path: Path) -> "TeamFile":

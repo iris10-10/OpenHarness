@@ -77,12 +77,29 @@ def detect_git_info(cwd: str) -> tuple[bool, str | None]:
             cwd=cwd,
             timeout=5,
             stdin=subprocess.DEVNULL,
+            check=False,
         )
-        is_git = result.returncode == 0 and result.stdout.strip() == "true"
+        is_git = result.returncode == 0 and result.stdout.strip().lower() == "true"
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False, None
 
     if not is_git:
+        return False, None
+
+    current = Path(cwd).resolve()
+    project_root: Path | None = None
+    for candidate in (current, *current.parents):
+        if (candidate / ".git").exists():
+            project_root = candidate
+            break
+    # A machine-wide C:\.git can exist in CI/sandbox images. Treating the
+    # drive root as a project repository makes every temporary directory
+    # look like a worktree.
+    if (
+        project_root is not None
+        and current.exists()
+        and project_root == Path(project_root.anchor).resolve()
+    ):
         return False, None
 
     try:
@@ -93,6 +110,7 @@ def detect_git_info(cwd: str) -> tuple[bool, str | None]:
             cwd=cwd,
             timeout=5,
             stdin=subprocess.DEVNULL,
+            check=False,
         )
         branch = result.stdout.strip() if result.returncode == 0 else None
     except (FileNotFoundError, subprocess.TimeoutExpired):

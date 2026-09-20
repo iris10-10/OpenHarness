@@ -9,6 +9,7 @@ both race-free and crash-safe.
 from __future__ import annotations
 
 from contextlib import contextmanager
+import os
 from pathlib import Path
 from typing import Iterator
 
@@ -36,6 +37,10 @@ def exclusive_file_lock(
             yield
         return
     if resolved_platform in {"macos", "linux", "wsl"}:
+        if os.name == "nt":
+            with _exclusive_windows_lock(lock_path):
+                yield
+            return
         with _exclusive_posix_lock(lock_path):
             yield
         return

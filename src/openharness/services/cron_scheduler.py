@@ -313,6 +313,8 @@ async def execute_job(job: dict[str, Any]) -> dict[str, Any]:
     """Run a single cron job and return a history entry."""
     name = job["name"]
     cwd = Path(job.get("cwd") or ".").expanduser()
+    if not cwd.exists() or not cwd.is_dir():
+        cwd = Path.cwd()
     started_at = datetime.now(timezone.utc)
     try:
         command = _command_for_job(job)

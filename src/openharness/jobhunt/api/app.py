@@ -9,11 +9,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from openharness.jobhunt.api.routes import applications, chat, interview, jobs, profile, rag, resumes
+from openharness.jobhunt.api.routes import (
+    applications,
+    chat,
+    interview,
+    jobs,
+    profile,
+    rag,
+    resumes,
+)
 
 
 def create_app(*, static_dir: str | Path | None = None) -> FastAPI:
-    app = FastAPI(title="OpenHarness Job Hunt Web API", version="0.1.0")
+    app = FastAPI(title="OpenHarness Job Hunt Web API", version="0.2.0")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],

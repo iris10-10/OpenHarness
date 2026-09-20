@@ -18,7 +18,7 @@ import typer
 #求职工具子命令入口（Phase 0 占位，具体子命令在 Phase 5 实现）
 from openharness.jobhunt.cli import jobhunt_app
 
-__version__ = "0.1.9"
+__version__ = "0.2.0"
 #停用词，常见的无实际意义的词的集合
 _PREVIEW_STOPWORDS = {
     "a",

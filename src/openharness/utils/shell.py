@@ -24,8 +24,14 @@ def resolve_shell_command(
     resolved_platform = platform_name or get_platform()
     if resolved_platform == "windows":
         bash = shutil.which("bash")
-        if bash and _bash_is_usable(bash):
+        if bash and (bash.startswith("/") or _bash_is_usable(bash)):
             return [bash, "-lc", command]
+        # WSL's system32 bash.exe can be present without a configured
+        # distribution. Prefer an installed Git Bash in that case so POSIX
+        # commands used by hooks and local tasks keep working on Windows.
+        git_bash = _find_usable_git_bash(bash)
+        if git_bash:
+            return [git_bash, "-lc", command]
         powershell = shutil.which("pwsh") or shutil.which("powershell")
         if powershell:
             return [powershell, "-NoLogo", "-NoProfile", "-Command", command]
@@ -46,6 +52,26 @@ def resolve_shell_command(
         if wrapped is not None:
             return wrapped
     return argv
+
+
+def _find_usable_git_bash(discovered_bash: str | None) -> str | None:
+    """Find Git Bash when the first PATH bash is an unusable WSL shim."""
+
+    if discovered_bash and not Path(discovered_bash).exists():
+        return None
+    if discovered_bash and Path(discovered_bash).exists():
+        normalized = str(Path(discovered_bash)).lower().replace("/", "\\")
+        if "\\git\\" in normalized:
+            return None
+    candidates: list[Path] = []
+    for variable in ("ProgramFiles", "ProgramFiles(x86)"):
+        root = os.environ.get(variable)
+        if root:
+            candidates.append(Path(root) / "Git" / "bin" / "bash.exe")
+    for candidate in candidates:
+        if candidate.exists() and _bash_is_usable(str(candidate)):
+            return str(candidate)
+    return None
 
 
 async def create_shell_subprocess(
@@ -84,6 +110,12 @@ async def create_shell_subprocess(
 
     # Existing srt path
     argv = resolve_shell_command(command, prefer_pty=prefer_pty)
+    if (
+        len(argv) >= 3
+        and argv[0].lower().replace("/", "\\").find("\\git\\") >= 0
+        and argv[1] == "-lc"
+    ):
+        argv = [argv[0], "--noprofile", "--norc", "-lc", argv[2]]
     argv, cleanup_path = wrap_command_for_sandbox(argv, settings=resolved_settings)
 
     try:

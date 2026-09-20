@@ -381,10 +381,11 @@ class BackendRegistry:
         from openharness.swarm.subprocess_backend import SubprocessBackend
 
         self._backends["subprocess"] = SubprocessBackend()
-        if get_platform_capabilities().supports_swarm_mailbox:
-            from openharness.swarm.in_process import InProcessBackend
+        # In-process execution is asyncio-based and works on Windows too;
+        # only the optional mailbox/pane integrations are platform-gated.
+        from openharness.swarm.in_process import InProcessBackend
 
-            self._backends["in_process"] = InProcessBackend()
+        self._backends["in_process"] = InProcessBackend()
 
         # Tmux backend registration is deferred until implementation exists.
         # If a TmuxBackend is available it can be registered via register_backend().

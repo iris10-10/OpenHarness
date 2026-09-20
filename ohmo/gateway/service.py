@@ -337,6 +337,19 @@ def _iter_workspace_gateway_pids(workspace: str | Path | None = None) -> list[in
             line = line.strip()
             if not line or line.lower() == "processid":
                 continue
+            # Some test doubles and MSYS process tools return the POSIX
+            # ``pid args`` shape even on Windows.
+            if "-m ohmo gateway run" in line:
+                try:
+                    pid_text, args = line.split(None, 1)
+                    pid = int(pid_text)
+                except (TypeError, ValueError):
+                    continue
+                if pid == current_pid or f"--workspace {root}" not in args:
+                    continue
+                if _pid_is_running(pid):
+                    pids.append(pid)
+                continue
             try:
                 pid = int(line)
             except ValueError:
@@ -399,11 +412,7 @@ def stop_gateway_process(cwd: str | Path | None = None, workspace: str | Path | 
     if sys.platform == "win32":
         for pid in unique_pids:
             with contextlib.suppress(Exception):
-                subprocess.run(
-                    ["taskkill", "/F", "/T", "/PID", str(pid)],
-                    capture_output=True,
-                    check=False,
-                )
+                os.kill(pid, signal.SIGTERM)
     else:
         for pid in unique_pids:
             with contextlib.suppress(ProcessLookupError):

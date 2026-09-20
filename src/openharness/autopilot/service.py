@@ -183,7 +183,16 @@ def _parse_verification_entry(entry: object) -> _VerificationCommand:
             ),
         )
     try:
-        argv = shlex.split(raw)
+        # POSIX shlex treats Windows backslashes as escape characters and
+        # corrupts absolute interpreter paths such as ``C:\Python\python.exe``.
+        argv = shlex.split(raw, posix=os.name != "nt")
+        if os.name == "nt":
+            argv = [
+                token[1:-1]
+                if len(token) >= 2 and token[0] == token[-1] and token[0] in {'"', "'"}
+                else token
+                for token in argv
+            ]
     except ValueError as exc:
         return _VerificationCommand(
             raw=raw,
@@ -1266,7 +1275,9 @@ class RepoAutopilotStore:
         return bool((completed.stdout or "").strip())
 
     def _is_git_repo(self, cwd: Path) -> bool:
-        completed = self._run_git(["rev-parse", "--git-dir"], cwd=cwd)
+        # A freshly initialized repository without a commit has no valid
+        # ``HEAD`` and cannot host a worktree. Treat it like a normal folder.
+        completed = self._run_git(["rev-parse", "--verify", "HEAD"], cwd=cwd)
         return completed.returncode == 0
 
     def _git_commit_all(self, cwd: Path, message: str) -> bool:

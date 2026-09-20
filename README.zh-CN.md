@@ -64,6 +64,25 @@ uv sync --extra dev
 uv run oh
 ```
 
+### 求职 Agent
+
+OpenHarness 还提供本地优先的求职 Agent：支持简历解析、岗位导入与搜索、岗位匹配、面试练习和投递状态追踪。完整文档见：
+
+- [求职快速开始](docs/jobhunt/quickstart.md)
+- [求职用户手册](docs/jobhunt/user-guide.md)
+- [常见问题](docs/jobhunt/faq.md)
+- [架构说明](docs/jobhunt/architecture.md)
+- [扩展开发指南](docs/jobhunt/extension-guide.md)
+
+最小离线演示：
+
+```bash
+oh job-hunt setup --yes --embedding-provider hash
+oh job-hunt import --dir ./examples/sample_data/jobs --collection jobs
+oh job-hunt search --query "Python 后端"
+oh job-hunt match --resume ./examples/sample_data/resume.md --jd ./examples/sample_data/jobs/python-backend.md
+```
+
 ---
 
 ## 配置模型与 Provider

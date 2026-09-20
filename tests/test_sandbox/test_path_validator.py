@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
+
+import pytest
 
 from openharness.sandbox.path_validator import validate_sandbox_path
 
@@ -51,7 +54,12 @@ def test_symlink_escape_blocked(tmp_path):
     secret.write_text("sensitive")
 
     link = cwd / "link.txt"
-    link.symlink_to(secret)
+    try:
+        link.symlink_to(secret)
+    except OSError as exc:
+        if sys.platform == "win32":
+            pytest.skip(f"symbolic links are unavailable in this Windows test environment: {exc}")
+        raise
 
     allowed, reason = validate_sandbox_path(link, cwd)
     assert allowed is False
