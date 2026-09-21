@@ -35,17 +35,35 @@ class JobCreateRequest(BaseModel):
     tags: list[str] = Field(default_factory=list)
     jd_text: str = ""
     posted_date: str = ""
+    source_url: str = ""
+    apply_url: str = ""
     url: str = ""
 
 
 class JobSearchRequest(BaseModel):
-    query: str = ""
-    city: str = ""
-    direction: str = ""
-    company_type: str = ""
-    salary_min: int | None = None
-    page: int = 1
-    page_size: int = 10
+    query: str = Field(default="", max_length=200)
+    city: str = Field(default="", max_length=100)
+    direction: str = Field(default="", max_length=100)
+    company_type: str = Field(default="", max_length=100)
+    salary_min: int | None = Field(default=None, ge=0)
+    salary_max: int | None = Field(default=None, ge=0)
+    experience: str = Field(default="", max_length=100)
+    education: str = Field(default="", max_length=100)
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=10, ge=1, le=50)
+    sync: bool = False
+
+
+class JobSyncRequest(BaseModel):
+    """Explicit user-triggered bounded provider synchronization."""
+
+    query: str = Field(default="", max_length=200)
+    city: str = Field(default="", max_length=100)
+    salary_min: int | None = Field(default=None, ge=0)
+    salary_max: int | None = Field(default=None, ge=0)
+    experience: str = Field(default="", max_length=100)
+    education: str = Field(default="", max_length=100)
+    limit: int = Field(default=20, ge=1, le=50)
 
 
 class JobMatchRequest(BaseModel):

@@ -1086,6 +1086,9 @@ def _apply_env_overrides(settings: Settings) -> Settings:
     scraping_enabled = os.environ.get("OPENHARNESS_SCRAPING_ENABLED")
     if scraping_enabled is not None:
         scraping_updates["enabled"] = _parse_bool_env(scraping_enabled)
+    scraping_safe_mode = os.environ.get("OPENHARNESS_SCRAPING_ACCOUNT_SAFE_MODE")
+    if scraping_safe_mode is not None:
+        scraping_updates["account_safe_mode"] = _parse_bool_env(scraping_safe_mode)
     scraping_delay_min = os.environ.get("OPENHARNESS_SCRAPING_REQUEST_DELAY_MIN")
     if scraping_delay_min:
         scraping_updates["request_delay_min"] = float(scraping_delay_min)

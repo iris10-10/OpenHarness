@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlencode, urljoin
 
+import httpx
+
 from openharness.rag.sources.base import (
     BaseScraper,
     ScrapedDocument,
@@ -76,10 +78,33 @@ class JobPosting:
 
 
 class JobScraperBase(BaseScraper):
-    """Shared collection flow for job-board search pages and detail pages."""
+    """Legacy parser compatibility layer, not a production job source.
+
+    The live Boss/Lagou page collectors are retired in favor of the reviewed
+    read-only Jobs provider boundary.  A caller may still inject a lightweight
+    fixture client for parser regression tests, but the default scraper can no
+    longer open a recruitment-site network connection.
+    """
 
     source_name = "jobs"
     search_url = ""
+
+    def fetch(self, url: str, *, params: Mapping[str, Any] | None = None) -> str:
+        """Allow deterministic fixture clients only; block live job scraping."""
+
+        if self._client is None:
+            raise PermissionError(
+                "live job-board scraping is retired; configure a reviewed read-only Jobs provider"
+            )
+        if isinstance(self._client, httpx.Client):
+            raise PermissionError(
+                "direct HTTP clients are not allowed for job-board scraping; use a reviewed Jobs provider"
+            )
+        if self.config.cookies or self.config.proxies:
+            raise PermissionError(
+                "job-board cookies and proxies are forbidden by the account-safe job boundary"
+            )
+        return super().fetch(url, params=params)
 
     def build_search_url(self, query: str, *, city: str = "", page: int = 1) -> str:
         """Build a source-specific search URL."""

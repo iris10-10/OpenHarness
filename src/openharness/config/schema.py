@@ -6,7 +6,9 @@ OpenHarness settings system evolves independently.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class _CompatModel(BaseModel):
@@ -182,7 +184,10 @@ class ScrapingSourceSettings(BaseModel):
 
     enabled: bool = False
     base_url: str = ""
+    username: str = ""
+    password: str = ""
     cookie: str = ""
+    token: str = ""
     request_interval_min: float = 1.0
     request_interval_max: float = 3.0
 
@@ -191,6 +196,22 @@ class ScrapingSettings(BaseModel):
     """Recruiting/interview/company data-source scraping configuration."""
 
     enabled: bool = False
+    account_safe_mode: bool = True
+    provider_server: str = ""
+    provider_name: str = ""
+    provider_tools: dict[str, str] = Field(
+        default_factory=lambda: {
+            "list_sources": "list_sources",
+            "search_jobs": "search_jobs",
+            "get_job_details": "get_job_details",
+        }
+    )
+    allowed_sources: list[dict[str, Any]] = Field(default_factory=list)
+    cache_freshness_hours: int = 24
+    max_results: int = 50
+    max_pages: int = 1
+    max_details: int = 50
+    max_response_bytes: int = 2_000_000
     respect_robots_txt: bool = True
     request_delay_min: float = 2.0
     request_delay_max: float = 5.0
@@ -234,6 +255,41 @@ class ScrapingSettings(BaseModel):
     github: ScrapingSourceSettings = Field(
         default_factory=lambda: ScrapingSourceSettings(enabled=True, base_url="https://api.github.com")
     )
+
+    @model_validator(mode="after")
+    def reject_recruitment_credentials_in_safe_mode(self) -> ScrapingSettings:
+        """Fail closed when a recruitment-site credential is configured."""
+
+        if not self.account_safe_mode:
+            return self
+        for source_name in (
+            "boss",
+            "lagou",
+            "nowcoder",
+            "leetcode",
+            "tianyancha",
+            "maimai",
+            "github",
+        ):
+            source = getattr(self, source_name)
+            if any(
+                str(getattr(source, field_name, "") or "").strip()
+                for field_name in ("username", "password", "cookie", "token")
+            ):
+                raise ValueError(
+                    f"scraping.{source_name} contains a credential while account_safe_mode is enabled"
+                )
+        if self.cache_freshness_hours < 1:
+            raise ValueError("cache_freshness_hours must be positive")
+        if self.max_results < 1 or self.max_results > 100:
+            raise ValueError("max_results must be between 1 and 100")
+        if self.max_pages != 1:
+            raise ValueError("max_pages must be 1")
+        if self.max_details < 0 or self.max_details > self.max_results:
+            raise ValueError("max_details must be between 0 and max_results")
+        if self.max_response_bytes < 1024:
+            raise ValueError("max_response_bytes is too small")
+        return self
 
 
 # ---------------------------------------------------------------------------

@@ -57,6 +57,8 @@ def render_jobs(jobs: list[dict[str, Any]], *, title: str = "岗位搜索结果"
     table.add_column("城市", no_wrap=True)
     table.add_column("匹配/相关度", no_wrap=True)
     table.add_column("发布时间", no_wrap=True)
+    table.add_column("来源", overflow="fold")
+    table.add_column("获取时间", no_wrap=True)
     for index, job in enumerate(jobs, start=1):
         score = job.get("score")
         score_value = "" if score is None else f"{float(score):.2f}"
@@ -68,6 +70,8 @@ def render_jobs(jobs: list[dict[str, Any]], *, title: str = "岗位搜索结果"
             str(job.get("city") or "-"),
             str(job.get("match") or job.get("recommendation") or score_value or "-"),
             str(job.get("posted_date") or "-"),
+            str(job.get("source_site") or "-"),
+            str(job.get("fetched_at") or "-"),
         )
     console.print(table)
 

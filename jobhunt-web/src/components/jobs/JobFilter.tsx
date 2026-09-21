@@ -21,6 +21,15 @@ export default function JobFilter({ onChange }: { onChange: (filters: JobFilters
         <Form.Item name="salary_min" label="最低薪资">
           <InputNumber min={0} addonAfter="K" style={{ width: "100%" }} />
         </Form.Item>
+        <Form.Item name="salary_max" label="最高薪资">
+          <InputNumber min={0} addonAfter="K" style={{ width: "100%" }} />
+        </Form.Item>
+        <Form.Item name="experience" label="经验">
+          <Select allowClear options={["经验不限", "1-3年", "3-5年", "5-10年"].map((value) => ({ value, label: value }))} />
+        </Form.Item>
+        <Form.Item name="education" label="学历">
+          <Select allowClear options={["不限", "大专", "本科", "硕士"].map((value) => ({ value, label: value }))} />
+        </Form.Item>
         <Space>
           <Button type="primary" htmlType="submit">筛选</Button>
           <Button onClick={() => { form.resetFields(); onChange({}); }}>重置</Button>

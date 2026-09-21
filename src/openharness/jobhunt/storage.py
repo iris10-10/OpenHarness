@@ -41,6 +41,8 @@ _JOBHUNT_SUBDIR = "jobhunt"
 PROFILE_FILENAME = "profile.json"
 APPLICATIONS_FILENAME = "applications.json"
 SESSIONS_FILENAME = "interview_sessions.json"
+JOBS_FILENAME = "jobs.json"
+SYNC_RUNS_FILENAME = "job_sync_runs.json"
 
 #模拟面试会话的保留上限，避免文件无限增长
 MAX_STORED_SESSIONS = 20
@@ -144,6 +146,16 @@ class JobHuntStore:
     def sessions_path(self) -> Path:
         return self.directory / SESSIONS_FILENAME
 
+    @property
+    def jobs_path(self) -> Path:
+        """Return the local canonical job snapshot path."""
+        return self.directory / JOBS_FILENAME
+
+    @property
+    def sync_runs_path(self) -> Path:
+        """Return the bounded synchronization audit history path."""
+        return self.directory / SYNC_RUNS_FILENAME
+
     # -------------------------------------------------------------- 画像
 
     def load_profile(self) -> dict[str, Any]:
@@ -184,3 +196,28 @@ class JobHuntStore:
     def save_sessions(self, sessions: list[dict[str, Any]]) -> None:
         #只保留最近 N 个会话，列表约定为 newest first
         _write_json(self.sessions_path, sessions[:MAX_STORED_SESSIONS])
+
+    # -------------------------------------------------------------- 岗位快照
+
+    def load_jobs(self) -> list[dict[str, Any]]:
+        """Return canonical job snapshots, ignoring malformed entries."""
+        payload = _read_json(self.jobs_path, [])
+        if not isinstance(payload, list):
+            return []
+        return [item for item in payload if isinstance(item, dict)]
+
+    def save_jobs(self, jobs: list[dict[str, Any]]) -> None:
+        """Persist canonical job snapshots atomically."""
+        _write_json(self.jobs_path, jobs)
+
+    def load_sync_runs(self, *, limit: int = 50) -> list[dict[str, Any]]:
+        """Return newest synchronization audit records."""
+        payload = _read_json(self.sync_runs_path, [])
+        if not isinstance(payload, list):
+            return []
+        return [item for item in payload if isinstance(item, dict)][: max(1, limit)]
+
+    def append_sync_run(self, run: dict[str, Any]) -> None:
+        """Append a redacted synchronization audit record."""
+        runs = [run, *self.load_sync_runs(limit=99)]
+        _write_json(self.sync_runs_path, runs[:100])

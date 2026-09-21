@@ -47,12 +47,11 @@ def write_json_file(path: Path, payload: Any) -> None:
 
 
 def load_jobs() -> list[dict[str, Any]]:
-    payload = read_json_file(data_file(JOBS_FILENAME), [])
-    return [item for item in payload if isinstance(item, dict)] if isinstance(payload, list) else []
+    return get_store().load_jobs()
 
 
 def save_jobs(jobs: list[dict[str, Any]]) -> None:
-    write_json_file(data_file(JOBS_FILENAME), jobs)
+    get_store().save_jobs(jobs)
 
 
 def load_resumes() -> list[dict[str, Any]]:

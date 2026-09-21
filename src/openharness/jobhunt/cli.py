@@ -124,14 +124,143 @@ def search_jobs(
     salary_min: Annotated[int | None, typer.Option("--salary-min", help="Minimum monthly salary in K.")] = None,
     top: Annotated[int, typer.Option("--top", "-n", min=1, max=50, help="Number of jobs to show.")] = 10,
     collection: Annotated[str, typer.Option("--collection", "-c", help="RAG collection name.")] = "jobs",
+    sync: Annotated[
+        bool,
+        typer.Option(
+            "--sync/--no-sync",
+            help="Explicitly run one bounded sync through the configured read-only Jobs provider.",
+        ),
+    ] = False,
 ) -> None:
-    """Search imported job postings."""
+    """Search local job snapshots/RAG; external sync is explicit and bounded."""
     from openharness.config.settings import load_settings
+    from openharness.jobhunt.job_provider import (
+        JobSearchQuery,
+        JobSearchService,
+        JobSyncLimits,
+        UnsafeJobProviderError,
+    )
+    from openharness.jobhunt.job_schema import SourceRegistry
     from openharness.jobhunt.parsing import parse_jd_text
+    from openharness.jobhunt.storage import JobHuntStore, resolve_jobhunt_dir
     from openharness.rag import build_retriever_from_settings
 
     settings = load_settings()
     effective_query = query.strip() or " ".join(settings.job_hunt.target_positions) or "工程师"
+    job_query = JobSearchQuery(
+        query=effective_query,
+        city=city,
+        salary_min=salary_min * 1000 if salary_min is not None else None,
+        limit=top,
+    )
+    jobhunt_dir = resolve_jobhunt_dir(configured=settings.job_hunt.data_directory)
+    store = JobHuntStore(jobhunt_dir)
+
+    registry = SourceRegistry.from_mappings(settings.scraping.allowed_sources)
+    if sync:
+        if not settings.scraping.account_safe_mode:
+            console.print(
+                "[red]岗位账号安全模式已关闭；当前命令不会在未完成显式风险确认的情况下同步外部服务。[/]"
+            )
+            raise typer.Exit(1)
+        has_public_source = any(
+            isinstance(item, dict) and (item.get("search_url_template") or item.get("feed_url"))
+            for item in settings.scraping.allowed_sources
+        )
+        if not settings.scraping.provider_server and not has_public_source:
+            console.print(
+                "[yellow]未配置受信任岗位来源。[/] "
+                "请先在 scraping.allowed_sources 登记 search_url_template/feed_url 和域名白名单。"
+            )
+            raise typer.Exit(1)
+        try:
+            from openharness.jobhunt.job_provider import build_jobs_provider_from_scraping_settings
+
+            server_config = (
+                settings.mcp_servers.get(settings.scraping.provider_server)
+                if settings.scraping.provider_server
+                else None
+            )
+            provider = build_jobs_provider_from_scraping_settings(
+                settings.scraping,
+                registry=registry,
+                mcp_server_config=server_config,
+            )
+            service = JobSearchService(
+                store,
+                registry=registry,
+                provider=provider,
+                limits=JobSyncLimits(
+                    max_results=min(settings.scraping.max_results, top),
+                    max_pages=settings.scraping.max_pages,
+                    max_details=min(settings.scraping.max_details, top),
+                    max_response_bytes=settings.scraping.max_response_bytes,
+                    max_retries=settings.scraping.max_retries,
+                    freshness_hours=settings.scraping.cache_freshness_hours,
+                ),
+            )
+            rows, report, notes = service.search(job_query, force_sync=True)
+            render_jobs(
+                [
+                    {
+                        "rank": index,
+                        "company": item.get("company", ""),
+                        "title": item.get("title", ""),
+                        "salary": item.get("salary", ""),
+                        "city": item.get("city", ""),
+                        "score": 0,
+                        "posted_date": item.get("published_at", ""),
+                        "source_site": item.get("source_site", ""),
+                        "source_url": item.get("source_url", ""),
+                        "fetched_at": item.get("fetched_at", ""),
+                        "provenance_status": item.get("provenance_status", ""),
+                    }
+                    for index, item in enumerate(rows, start=1)
+                ],
+                title=f"岗位搜索: {effective_query}",
+            )
+            if report is not None:
+                console.print(
+                    "[dim]sync: "
+                    f"run={report.collection_run_id}, fetched={report.fetched_count}, "
+                    f"inserted={report.inserted_count}, updated={report.updated_count}, "
+                    f"failed={report.failed_count}[/]"
+                )
+            for note in notes:
+                console.print(f"[yellow]提示:[/] {note}")
+            return
+        except UnsafeJobProviderError as exc:
+            console.print(f"[red]岗位服务配置不安全:[/] {exc}")
+            raise typer.Exit(1) from exc
+
+    # Local JSON snapshot is checked before RAG, matching the documented
+    # local-first order. An empty registry is sufficient for local reads.
+    local_service = JobSearchService(store, registry=registry)
+    cached_rows, _report, notes = local_service.search(job_query)
+    if cached_rows:
+        render_jobs(
+            [
+                {
+                    "rank": index,
+                    "company": item.get("company", ""),
+                    "title": item.get("title", ""),
+                    "salary": item.get("salary", ""),
+                    "city": item.get("city", ""),
+                    "score": 0,
+                    "posted_date": item.get("published_at", ""),
+                    "source_site": item.get("source_site", ""),
+                    "source_url": item.get("source_url", ""),
+                    "fetched_at": item.get("fetched_at", ""),
+                    "provenance_status": item.get("provenance_status", ""),
+                }
+                for index, item in enumerate(cached_rows, start=1)
+            ],
+            title=f"岗位搜索: {effective_query}",
+        )
+        for note in notes:
+            console.print(f"[yellow]提示:[/] {note}")
+        return
+
     where: dict[str, Any] = {}
     if city:
         where["city"] = city
@@ -172,6 +301,10 @@ def search_jobs(
                 "city": job.city,
                 "score": hit.score,
                 "posted_date": job.posted_date,
+                "source_site": metadata.get("source_site", ""),
+                "source_url": metadata.get("source_url") or metadata.get("url", ""),
+                "fetched_at": metadata.get("fetched_at", ""),
+                "provenance_status": metadata.get("provenance_status", ""),
             }
         )
     render_jobs(rows, title=f"岗位搜索: {effective_query}")

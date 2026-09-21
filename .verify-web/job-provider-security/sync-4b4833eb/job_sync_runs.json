@@ -1,0 +1,38 @@
+[
+  {
+    "run_id": "job-sync-8112f6d5baff448b",
+    "provider": "trusted_jobs_mcp",
+    "source_code": "",
+    "tool_name": "search_jobs",
+    "query_digest": "22d00111050b16d3cc9a807e",
+    "started_at": "2026-09-21T07:41:30Z",
+    "finished_at": "2026-09-21T07:41:30Z",
+    "fetched_count": 0,
+    "inserted_count": 0,
+    "updated_count": 0,
+    "skipped_count": 0,
+    "stale_count": 1,
+    "failed_count": 1,
+    "errors": [
+      "temporary failure with token=<redacted>"
+    ],
+    "server_version": ""
+  },
+  {
+    "run_id": "job-sync-fef69e1944dc4ab4",
+    "provider": "trusted_jobs_mcp",
+    "source_code": "provider_x",
+    "tool_name": "search_jobs",
+    "query_digest": "22d00111050b16d3cc9a807e",
+    "started_at": "2026-09-21T07:41:30Z",
+    "finished_at": "2026-09-21T07:41:30Z",
+    "fetched_count": 2,
+    "inserted_count": 1,
+    "updated_count": 0,
+    "skipped_count": 1,
+    "stale_count": 0,
+    "failed_count": 0,
+    "errors": [],
+    "server_version": ""
+  }
+]
