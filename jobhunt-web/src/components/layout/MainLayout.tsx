@@ -9,11 +9,11 @@ const { Content } = Layout;
 export default function MainLayout() {
   const collapsed = useSettingsStore((state) => state.collapsed);
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <Layout className="app-layout">
       <Sidebar collapsed={collapsed} />
       <Layout>
         <Header />
-        <Content style={{ padding: 20, minWidth: 0 }}>
+        <Content className="app-content">
           <Outlet />
         </Content>
       </Layout>
