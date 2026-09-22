@@ -22,10 +22,16 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from openharness.jobhunt.profile import (
+    PROFILE_SECTIONS,
+    ai_visibility_summary,
+    normalize_profile_updates,
+    profile_with_defaults,
+)
 from openharness.tools.base import ToolExecutionContext, ToolResult
 from openharness.tools.jobhunt_base import JobHuntToolBase, error_result, json_output
 
-_PROFILE_SECTIONS = ("basic", "skills", "education", "preferences", "job_search_status")
+_PROFILE_SECTIONS = (*PROFILE_SECTIONS, "privacy")
 
 
 class ProfileUpdateToolInput(BaseModel):
@@ -33,9 +39,9 @@ class ProfileUpdateToolInput(BaseModel):
 
     updates: dict[str, Any] = Field(
         description=(
-            "Nested profile updates, deep-merged into the stored profile. "
-            "Top-level keys: basic / skills / education / preferences / "
-            "job_search_status. Example: "
+            "Nested profile updates, deep-merged into the stored user profile. "
+            "Top-level keys: basic / skills / education / experience / "
+            "preferences / job_search_status / privacy. Example: "
             '{"basic": {"target_cities": ["北京"]}, '
             '"preferences": {"expected_salary_min": 20000}}'
         )
@@ -47,8 +53,9 @@ class ProfileUpdateTool(JobHuntToolBase):
 
     name = "profile_update"
     description = (
-        "Create or update the candidate's job-hunt profile with deep-merged nested "
-        "updates (basic info, skills, education, preferences, job-search status). "
+        "Create or update the user's profile with deep-merged nested updates "
+        "(basic info, skills, education, experience, preferences, job-search "
+        "status and AI privacy controls). "
         "The merged profile is persisted locally and returned. Writes to the local "
         "job-hunt data directory."
     )
@@ -65,10 +72,15 @@ class ProfileUpdateTool(JobHuntToolBase):
             return error_result("'updates' must be a non-empty mapping")
         unknown = [key for key in arguments.updates if key not in _PROFILE_SECTIONS]
         store = self.resolve_store(context)
-        merged = store.merge_profile(arguments.updates)
+        self.resolve_profile(context)
+        normalized = normalize_profile_updates(arguments.updates)
+        merged = profile_with_defaults(store.merge_profile(normalized))
+        if merged != store.load_profile():
+            store.save_profile(merged)
         payload: dict[str, Any] = {
             "updated_keys": sorted(arguments.updates.keys()),
             "profile": merged,
+            "ai_visibility": ai_visibility_summary(merged),
         }
         if unknown:
             payload["warnings"] = [
@@ -96,8 +108,8 @@ class ProfileQueryTool(JobHuntToolBase):
 
     name = "profile_query"
     description = (
-        "Return the stored candidate profile (basic info, skills, education, "
-        "preferences, job-search status). Read-only."
+        "Return the stored user profile (basic info, skills, education, "
+        "experience, preferences, job-search status and AI visibility). Read-only."
     )
     input_model = ProfileQueryToolInput
 
@@ -115,8 +127,7 @@ class ProfileQueryTool(JobHuntToolBase):
                 f"Unknown sections {unknown}: use {', '.join(_PROFILE_SECTIONS)}"
             )
 
-        store = self.resolve_store(context)
-        profile = store.load_profile()
+        profile = self.resolve_profile(context)
         if not profile:
             return ToolResult(
                 output=json_output(
@@ -127,6 +138,16 @@ class ProfileQueryTool(JobHuntToolBase):
                     }
                 )
             )
+        profile = profile_with_defaults(profile)
+        full_profile = profile
         if requested:
             profile = {key: profile.get(key) for key in requested if key in profile}
-        return ToolResult(output=json_output({"persisted": True, "profile": profile}))
+        return ToolResult(
+            output=json_output(
+                {
+                    "persisted": True,
+                    "profile": profile,
+                    "ai_visibility": ai_visibility_summary(full_profile),
+                }
+            )
+        )

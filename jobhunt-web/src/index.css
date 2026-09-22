@@ -58,6 +58,44 @@ body {
   gap: 16px;
 }
 
+.profile-settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.profile-section-card {
+  margin-bottom: 16px;
+}
+
+.profile-section-card .ant-card-head {
+  min-height: 48px;
+}
+
+.profile-section-card .ant-card-body {
+  padding: 16px;
+}
+
+.profile-visibility-preview {
+  margin-top: 16px;
+  padding: 12px;
+  background: #f4f7f6;
+  border: 1px solid #dce6e1;
+  border-radius: 6px;
+}
+
+.profile-save-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid #e3e9e6;
+  border-radius: 8px;
+}
+
 .dense-card .ant-card-body {
   padding: 14px;
 }
@@ -323,6 +361,10 @@ body {
     grid-template-columns: 1fr;
   }
 
+  .profile-settings-grid {
+    grid-template-columns: 1fr;
+  }
+
   .kanban {
     grid-template-columns: repeat(6, 220px);
   }
@@ -347,6 +389,11 @@ body {
 
   .page {
     gap: 12px;
+  }
+
+  .profile-save-bar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .agent-workspace {

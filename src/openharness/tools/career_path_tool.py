@@ -272,8 +272,7 @@ class CareerPathPlanTool(JobHuntToolBase):
                 f"{_AUTO_ROUTE} / {' / '.join(_ROUTES)}"
             )
 
-        store = self.resolve_store(context)
-        profile = store.load_profile()
+        profile = self.resolve_profile(context)
         candidate = CandidateProfile.from_profile_dict(profile) if profile else CandidateProfile()
 
         current_title = arguments.current_title.strip() or candidate.current_title

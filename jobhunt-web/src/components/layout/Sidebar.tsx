@@ -13,7 +13,7 @@ const items = [
   { key: "/resumes", icon: <FileText size={18} />, label: "简历管理" },
   { key: "/interview", icon: <Mic size={18} />, label: "面试准备" },
   { key: "/companies", icon: <Building2 size={18} />, label: "公司库" },
-  { key: "/settings", icon: <Settings size={18} />, label: "用户设置" },
+  { key: "/settings", icon: <Settings size={18} />, label: "用户画像" },
 ];
 
 export default function Sidebar({ collapsed }: { collapsed: boolean }) {

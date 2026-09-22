@@ -196,15 +196,22 @@ def run_jobhunt_cron_task(task: str) -> dict[str, Any]:
     keeps the default job commands useful even without a running model session.
     """
     from openharness.config.settings import load_settings
+    from openharness.jobhunt.profile import migrate_profile_store
     from openharness.jobhunt.storage import JobHuntStore, resolve_jobhunt_dir
 
     settings = load_settings()
     directory = resolve_jobhunt_dir(configured=settings.job_hunt.data_directory)
     store = JobHuntStore(directory)
+    profile = migrate_profile_store(store, settings)
+    basic = profile.get("basic") if isinstance(profile.get("basic"), dict) else {}
+    preferences = profile.get("preferences") if isinstance(profile.get("preferences"), dict) else {}
+    profile_positions = preferences.get("target_positions")
+    profile_cities = basic.get("target_cities")
+    profile_company_types = preferences.get("company_types")
 
     if task == "daily-jobs":
-        positions = settings.job_hunt.target_positions or ["工程师"]
-        cities = settings.job_hunt.target_cities or ["不限"]
+        positions = profile_positions or settings.job_hunt.target_positions or ["工程师"]
+        cities = profile_cities or settings.job_hunt.target_cities or ["不限"]
         return {
             "task": task,
             "status": "ok",
@@ -238,12 +245,12 @@ def run_jobhunt_cron_task(task: str) -> dict[str, Any]:
     if task == "interview-digest":
         profile = store.load_profile()
         preferences = profile.get("preferences") if isinstance(profile.get("preferences"), dict) else {}
-        companies = settings.job_hunt.default_company_types
+        companies = profile_company_types or settings.job_hunt.default_company_types
         return {
             "task": task,
             "status": "ok",
             "message": "面经更新任务已准备",
-            "target_positions": preferences.get("target_positions") or settings.job_hunt.target_positions,
+            "target_positions": profile_positions or settings.job_hunt.target_positions,
             "target_company_types": companies,
         }
     if task == "data-sync":

@@ -254,8 +254,7 @@ class JobMatchTool(JobHuntToolBase):
     async def execute(
         self, arguments: JobMatchToolInput, context: ToolExecutionContext
     ) -> ToolResult:
-        store = self.resolve_store(context)
-        profile = store.load_profile()
+        profile = self.resolve_profile(context)
         has_resume = bool(arguments.resume_text and arguments.resume_text.strip())
         if not has_resume and not profile:
             return error_result(
@@ -443,7 +442,7 @@ class CandidateMatchTool(JobHuntToolBase):
                 notes.extend(str(note) for note in outcome.notes)
 
         if arguments.include_profile:
-            profile = self.resolve_store(context).load_profile()
+            profile = self.resolve_profile(context)
             if profile:
                 candidate = CandidateProfile.from_profile_dict(profile)
                 if candidate.skills or candidate.years_experience is not None:

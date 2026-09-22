@@ -1,1 +1,0 @@
-{"scraping": {"allowed_sources": [{"source_code": "provider_x", "source_site": "示例岗位服务", "allowed_domains": ["jobs.example.com"], "default_company": "示例科技", "company_id": "example", "official_career_url": "https://jobs.example.com"}]}}

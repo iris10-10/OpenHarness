@@ -92,6 +92,12 @@ class JobHuntToolBase(BaseTool):
         )
         return JobHuntStore(directory)
 
+    def resolve_profile(self, context: ToolExecutionContext) -> dict[str, Any]:
+        """Load the canonical profile, migrating legacy settings when needed."""
+        from openharness.jobhunt.profile import migrate_profile_store
+
+        return migrate_profile_store(self.resolve_store(context), self.resolve_settings())
+
     # --------------------------------------------------------------- RAG 写入
 
     def ingest_document(

@@ -348,8 +348,7 @@ class ResumeGenerateTool(JobHuntToolBase):
             )
 
         job = parse_jd_text(arguments.jd_text)
-        store = self.resolve_store(context)
-        profile = store.load_profile()
+        profile = self.resolve_profile(context)
         parsed = parse_resume_text(arguments.resume_text) if arguments.resume_text else None
         candidate = self.candidate_from_texts(arguments.resume_text, profile)
 

@@ -307,8 +307,7 @@ class CoverLetterGenerateTool(JobHuntToolBase):
         company = arguments.company.strip() or job.company
         position = arguments.position.strip() or job.title
 
-        store = self.resolve_store(context)
-        profile = store.load_profile()
+        profile = self.resolve_profile(context)
         parsed = parse_resume_text(arguments.resume_text) if arguments.resume_text.strip() else None
         candidate = self.candidate_from_texts(arguments.resume_text, profile)
 

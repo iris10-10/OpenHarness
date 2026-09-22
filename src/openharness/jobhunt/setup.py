@@ -9,6 +9,7 @@ import typer
 
 from openharness.config.paths import get_config_file_path
 from openharness.config.settings import Settings, load_settings, save_settings
+from openharness.jobhunt.profile import migrate_profile_store
 from openharness.jobhunt.storage import JobHuntStore, resolve_jobhunt_dir
 
 
@@ -73,12 +74,15 @@ def _with_updated_settings(
             ),
             "job_hunt": settings.job_hunt.model_copy(
                 update={
-                    "target_cities": cities,
-                    "target_positions": positions,
-                    "expected_salary_min": salary_min,
-                    "expected_salary_max": salary_max,
-                    "years_of_experience": years,
-                    "default_company_types": company_types,
+                    # Personal/job-search fields are now canonical in
+                    # profile.json. Keep the legacy model for old config
+                    # files, but do not create a second source of truth.
+                    "target_cities": settings.job_hunt.target_cities,
+                    "target_positions": settings.job_hunt.target_positions,
+                    "expected_salary_min": settings.job_hunt.expected_salary_min,
+                    "expected_salary_max": settings.job_hunt.expected_salary_max,
+                    "years_of_experience": settings.job_hunt.years_of_experience,
+                    "default_company_types": settings.job_hunt.default_company_types,
                 }
             ),
             "scraping": settings.scraping.model_copy(update={"enabled": scraping_enabled}),
@@ -131,20 +135,58 @@ def run_setup(
 ) -> dict[str, Any]:
     """Run the setup wizard and persist settings/profile updates."""
     settings = load_settings()
+    initial_dir = resolve_jobhunt_dir(configured=settings.job_hunt.data_directory)
+    existing_profile = migrate_profile_store(JobHuntStore(initial_dir), settings)
+    basic = existing_profile.get("basic") if isinstance(existing_profile.get("basic"), dict) else {}
+    preferences = (
+        existing_profile.get("preferences")
+        if isinstance(existing_profile.get("preferences"), dict)
+        else {}
+    )
+    skills_block = (
+        existing_profile.get("skills")
+        if isinstance(existing_profile.get("skills"), dict)
+        else {}
+    )
+    profile_cities = basic.get("target_cities") or settings.job_hunt.target_cities
+    profile_positions = preferences.get("target_positions") or settings.job_hunt.target_positions
+    profile_salary_min = (
+        preferences.get("expected_salary_min")
+        if preferences.get("expected_salary_min") is not None
+        else settings.job_hunt.expected_salary_min
+    )
+    profile_salary_max = (
+        preferences.get("expected_salary_max")
+        if preferences.get("expected_salary_max") is not None
+        else settings.job_hunt.expected_salary_max
+    )
+    profile_years = (
+        basic.get("years_of_experience")
+        if basic.get("years_of_experience") is not None
+        else settings.job_hunt.years_of_experience
+    )
+    profile_company_types = (
+        preferences.get("company_types") or settings.job_hunt.default_company_types
+    )
+    profile_title = basic.get("current_title") or ""
     typer.echo("OpenHarness Job Hunt setup")
 
     if yes:
         final_rag_enabled = settings.rag.enabled if rag_enabled is None else rag_enabled
         final_embedding = embedding_provider or settings.rag.embedding.provider
-        final_cities = _split_csv(cities) or settings.job_hunt.target_cities
-        final_positions = _split_csv(positions) or settings.job_hunt.target_positions
-        final_salary_min = salary_min if salary_min is not None else settings.job_hunt.expected_salary_min
-        final_salary_max = salary_max if salary_max is not None else settings.job_hunt.expected_salary_max
-        final_years = years if years is not None else settings.job_hunt.years_of_experience
-        final_company_types = _split_csv(company_types) or settings.job_hunt.default_company_types
+        final_cities = _split_csv(cities) or profile_cities
+        final_positions = _split_csv(positions) or profile_positions
+        final_salary_min = salary_min if salary_min is not None else profile_salary_min
+        final_salary_max = salary_max if salary_max is not None else profile_salary_max
+        final_years = years if years is not None else profile_years
+        final_company_types = _split_csv(company_types) or profile_company_types
         final_skills = _split_csv(skills)
-        final_title = current_title or (final_positions[0] if final_positions else "")
-        final_scraping_enabled = settings.scraping.enabled if scraping_enabled is None else scraping_enabled
+        final_title = current_title or profile_title or (
+            final_positions[0] if final_positions else ""
+        )
+        final_scraping_enabled = (
+            settings.scraping.enabled if scraping_enabled is None else scraping_enabled
+        )
     else:
         typer.echo("1. 配置 RAG 与 Embedding")
         default_rag = settings.rag.enabled if rag_enabled is None else rag_enabled
@@ -157,35 +199,50 @@ def run_setup(
         final_cities = _split_csv(
             cities
             if cities is not None
-            else _prompt_text("目标城市，用逗号分隔", ",".join(settings.job_hunt.target_cities))
+            else _prompt_text("目标城市，用逗号分隔", ",".join(profile_cities))
         )
         final_positions = _split_csv(
             positions
             if positions is not None
-            else _prompt_text("目标岗位，用逗号分隔", ",".join(settings.job_hunt.target_positions))
+            else _prompt_text("目标岗位，用逗号分隔", ",".join(profile_positions))
         )
         final_salary_min = salary_min if salary_min is not None else _prompt_int(
-            "期望最低月薪 K", settings.job_hunt.expected_salary_min
+            "期望最低月薪 K", profile_salary_min
         )
         final_salary_max = salary_max if salary_max is not None else _prompt_int(
-            "期望最高月薪 K", settings.job_hunt.expected_salary_max
+            "期望最高月薪 K", profile_salary_max
         )
         final_years = years if years is not None else _prompt_float(
-            "工作经验年限", settings.job_hunt.years_of_experience
+            "工作经验年限", profile_years
         )
         final_company_types = _split_csv(
             company_types
             if company_types is not None
-            else _prompt_text("目标公司类型，用逗号分隔", ",".join(settings.job_hunt.default_company_types))
+            else _prompt_text("目标公司类型，用逗号分隔", ",".join(profile_company_types))
         )
-        final_skills = _split_csv(skills if skills is not None else _prompt_text("核心技能，用逗号分隔", ""))
+        default_skills = (
+            skills_block.get("technical")
+            if isinstance(skills_block.get("technical"), list)
+            else []
+        )
+        final_skills = _split_csv(
+            skills
+            if skills is not None
+            else _prompt_text(
+                "核心技能，用逗号分隔",
+                ",".join(map(str, default_skills)),
+            )
+        )
         final_title = current_title if current_title is not None else _prompt_text(
-            "当前/目标职位", final_positions[0] if final_positions else ""
+            "当前/目标职位", profile_title or (final_positions[0] if final_positions else "")
         )
         final_scraping_enabled = (
             scraping_enabled
             if scraping_enabled is not None
-            else typer.confirm("启用招聘网站采集? 默认关闭，开启后网络请求仍按权限策略确认", default=False)
+            else typer.confirm(
+                "启用招聘网站采集? 默认关闭，开启后网络请求仍按权限策略确认",
+                default=False,
+            )
         )
 
     updated = _with_updated_settings(

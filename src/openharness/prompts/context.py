@@ -23,12 +23,16 @@ from openharness.config.paths import (
     get_project_pr_comments_file,
 )
 from openharness.config.settings import Settings
-from openharness.coordinator.coordinator_mode import get_coordinator_system_prompt, is_coordinator_mode
+from openharness.coordinator.coordinator_mode import (
+    get_coordinator_system_prompt,
+    is_coordinator_mode,
+)
+from openharness.jobhunt.profile import ai_visible_profile, migrate_profile_store
 from openharness.memory import load_memory_prompt
 from openharness.memory.relevance import format_relevant_memories, select_relevant_memories
 from openharness.memory.usage import mark_memory_used
-from openharness.personalization.rules import load_local_rules
 from openharness.permissions.modes import PermissionMode
+from openharness.personalization.rules import load_local_rules
 from openharness.prompts.claudemd import load_claude_md_prompt
 from openharness.prompts.system_prompt import build_system_prompt
 from openharness.rag.utils import estimate_tokens
@@ -247,13 +251,16 @@ def _format_profile_context(profile: Mapping[str, Any]) -> str:
     """Render the stored candidate profile as a compact prompt section.
 
     结构与 user_profile_tool 存储的画像一致：basic / skills / education /
-    preferences / job_search_status；缺失字段自动跳过，未知顶层键按原样
-    追加一行，保证画像更新后注入内容不失真。
+    experience / preferences / job_search_status；只渲染隐私设置允许的
+    标准字段，未知字段永远不会自动进入模型上下文。
     """
+    profile = ai_visible_profile(profile)
+    if not profile:
+        return ""
     lines = [
         "# Candidate Profile",
         "",
-        "本地存储的用户求职画像（用 profile_update 更新，profile_query 查询）：",
+        "用户允许 AI 使用的本地用户画像（联系方式默认不包含）：",
     ]
 
     basic = _as_mapping(profile.get("basic"))
@@ -286,13 +293,30 @@ def _format_profile_context(profile: Mapping[str, Any]) -> str:
         skill_parts.append("、".join(technical))
     if domains := _as_str_list(skills.get("domains")):
         skill_parts.append("领域经验 " + "、".join(domains))
+    if soft := _as_str_list(skills.get("soft")):
+        skill_parts.append("软技能 " + "、".join(soft))
+    if languages := _as_str_list(skills.get("languages")):
+        skill_parts.append("语言 " + "、".join(languages))
     if skill_parts:
         lines.append("- 技能：" + "｜".join(skill_parts))
 
     education = _as_mapping(profile.get("education"))
-    edu_parts = [str(value).strip() for value in education.values() if str(value).strip()]
+    edu_parts = [
+        str(education.get(key, "")).strip()
+        for key in ("school", "degree", "major", "graduation_year")
+        if str(education.get(key, "")).strip()
+    ]
     if edu_parts:
         lines.append("- 教育：" + " ".join(edu_parts))
+
+    experience = _as_mapping(profile.get("experience"))
+    experience_parts = [
+        str(experience.get(key, "")).strip()
+        for key in ("summary", "current_company", "projects")
+        if str(experience.get(key, "")).strip()
+    ]
+    if experience_parts:
+        lines.append("- 经历：" + "｜".join(experience_parts))
 
     preferences = _as_mapping(profile.get("preferences"))
     pref_parts: list[str] = []
@@ -313,12 +337,6 @@ def _format_profile_context(profile: Mapping[str, Any]) -> str:
     if status := str(profile.get("job_search_status", "")).strip():
         lines.append(f"- 求职状态：{status}")
 
-    known_keys = {"basic", "skills", "education", "preferences", "job_search_status"}
-    for key, value in profile.items():
-        if key in known_keys or not str(value).strip():
-            continue
-        lines.append(f"- {key}：{value}")
-
     if len(lines) <= 3:  # 没有可识别字段时退化为紧凑 JSON，保证画像仍被注入
         lines.append("- " + str(dict(profile)))
     return "\n".join(lines)
@@ -334,12 +352,14 @@ def build_profile_context(settings: Settings, *, budget_tokens: int | None = Non
         from openharness.jobhunt.storage import JobHuntStore, resolve_jobhunt_dir
 
         directory = resolve_jobhunt_dir(configured=settings.job_hunt.data_directory)
-        profile = JobHuntStore(directory).load_profile()
+        profile = migrate_profile_store(JobHuntStore(directory), settings)
     except Exception:  # 本地存储不得阻断提示词组装
         return None
     if not profile:
         return None
     section = _format_profile_context(profile)
+    if not section:
+        return None
     if budget_tokens is not None:
         section = _truncate_to_budget(section, budget_tokens)
     return section or None

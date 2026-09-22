@@ -91,7 +91,7 @@ def _evaluation_payload(evaluation: Any) -> dict[str, Any]:
 
 
 def _resolve_practice_skills(
-    store: JobHuntStore, jd_text: str, resume_text: str
+    store: JobHuntStore, jd_text: str, resume_text: str, profile: dict[str, Any]
 ) -> tuple[list[str], str]:
     """Resolve practice-question skills: JD > resume > stored profile."""
     if jd_text.strip():
@@ -102,7 +102,6 @@ def _resolve_practice_skills(
         return skills, "jd"
     if resume_text.strip():
         return list(parse_resume_text(resume_text).technical_skills), "resume"
-    profile = store.load_profile()
     skills = list(CandidateProfile.from_profile_dict(profile).skills) if profile else []
     return skills, "profile" if skills else ""
 
@@ -275,8 +274,9 @@ class InterviewPracticeTool(JobHuntToolBase):
             return error_result(difficulty_error)
 
         store = self.resolve_store(context)
+        profile = self.resolve_profile(context)
         skills, skill_source = _resolve_practice_skills(
-            store, arguments.jd_text, arguments.resume_text
+            store, arguments.jd_text, arguments.resume_text, profile
         )
         questions = build_questions(
             skills,

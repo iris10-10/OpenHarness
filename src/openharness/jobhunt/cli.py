@@ -142,18 +142,26 @@ def search_jobs(
     )
     from openharness.jobhunt.job_schema import SourceRegistry
     from openharness.jobhunt.parsing import parse_jd_text
+    from openharness.jobhunt.profile import migrate_profile_store
     from openharness.jobhunt.storage import JobHuntStore, resolve_jobhunt_dir
     from openharness.rag import build_retriever_from_settings
 
     settings = load_settings()
-    effective_query = query.strip() or " ".join(settings.job_hunt.target_positions) or "工程师"
+    directory = resolve_jobhunt_dir(configured=settings.job_hunt.data_directory)
+    profile = migrate_profile_store(JobHuntStore(directory), settings)
+    preferences = profile.get("preferences") if isinstance(profile.get("preferences"), dict) else {}
+    profile_positions = preferences.get("target_positions")
+    effective_query = query.strip() or " ".join(
+        str(item) for item in profile_positions
+    ) if isinstance(profile_positions, list) else query.strip()
+    effective_query = effective_query or " ".join(settings.job_hunt.target_positions) or "工程师"
     job_query = JobSearchQuery(
         query=effective_query,
         city=city,
         salary_min=salary_min * 1000 if salary_min is not None else None,
         limit=top,
     )
-    jobhunt_dir = resolve_jobhunt_dir(configured=settings.job_hunt.data_directory)
+    jobhunt_dir = directory
     store = JobHuntStore(jobhunt_dir)
 
     registry = SourceRegistry.from_mappings(settings.scraping.allowed_sources)
@@ -560,8 +568,10 @@ def import_knowledge(
 @jobhunt_app.command("status")
 def status() -> None:
     """Show the local job-hunt dashboard."""
-    store, _settings = _load_store()
-    render_status(store.load_profile(), store.load_applications())
+    from openharness.jobhunt.profile import migrate_profile_store
+
+    store, settings = _load_store()
+    render_status(migrate_profile_store(store, settings), store.load_applications())
 
 
 @jobhunt_app.command("setup")
@@ -610,8 +620,10 @@ def setup(
 @profile_app.command("show")
 def profile_show() -> None:
     """Show the stored user profile."""
-    store, _settings = _load_store()
-    render_profile(store.load_profile())
+    from openharness.jobhunt.profile import migrate_profile_store
+
+    store, settings = _load_store()
+    render_profile(migrate_profile_store(store, settings))
 
 
 @profile_app.command("update")
@@ -624,9 +636,11 @@ def profile_update(
     years: Annotated[float | None, typer.Option("--years")] = None,
 ) -> None:
     """Update local profile fields."""
+    from openharness.jobhunt.profile import migrate_profile_store
     from openharness.jobhunt.setup import _split_csv
 
-    store, _settings = _load_store()
+    store, settings = _load_store()
+    migrate_profile_store(store, settings)
     updates: dict[str, Any] = {"basic": {}, "preferences": {}, "skills": {}}
     if current_title:
         updates["basic"]["current_title"] = current_title

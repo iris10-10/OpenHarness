@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="OpenHarness 求职 Agent 项目介绍与现场演示页面">
+  <title>JobHunt Agent · 项目介绍</title>
+  <style>
+    :root {
+      --bg: #f4f7f4;
+      --paper: #ffffff;
+      --ink: #102124;
+      --muted: #667779;
+      --muted-2: #94a1a1;
+      --line: #dce6e2;
+      --green: #116b57;
+      --green-2: #1b9a78;
+      --mint: #dff3e9;
+      --yellow: #f4c96d;
+      --red: #d66d5f;
+      --shadow: 0 22px 60px rgba(32, 70, 61, .11);
+      --mono: "JetBrains Mono", "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      --sans: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 90% 0%, #dff1e8 0, transparent 27rem),
+        radial-gradient(circle at 0% 42%, #eef1dd 0, transparent 24rem),
+        var(--bg);
+      font-family: var(--sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; }
+    .wrap { width: min(1160px, calc(100% - 40px)); margin: 0 auto; }
+    .mono { font-family: var(--mono); }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid rgba(220, 230, 226, .9);
+      background: rgba(244, 247, 244, .86);
+      backdrop-filter: blur(18px);
+    }
+    .topbar-inner {
+      min-height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 800; letter-spacing: -.02em; }
+    .brand img { width: 30px; height: 30px; object-fit: contain; }
+    .brand small { color: var(--green); font: 10px var(--mono); letter-spacing: .08em; }
+    nav { display: flex; gap: 5px; align-items: center; }
+    nav a { padding: 8px 11px; border-radius: 6px; color: var(--muted); font-size: 13px; }
+    nav a:hover, nav a.active { color: var(--green); background: var(--mint); }
+    .demo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--green);
+      font: 11px var(--mono);
+    }
+    .demo-badge::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green-2);
+      box-shadow: 0 0 0 4px rgba(27, 154, 120, .13);
+    }
+
+    .hero { padding: 84px 0 72px; }
+    .hero-grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: 64px; align-items: center; }
+    .eyebrow, .section-kicker {
+      margin-bottom: 13px;
+      color: var(--green);
+      font: 11px var(--mono);
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      max-width: 560px;
+      margin-bottom: 20px;
+      font-size: clamp(42px, 6vw, 73px);
+      line-height: 1.05;
+      letter-spacing: -.065em;
+    }
+    h1 em { color: var(--green); font-style: normal; }
+    .hero-copy { max-width: 540px; margin-bottom: 0; color: var(--muted); font-size: 17px; line-height: 1.8; }
+    .hero-copy strong { color: var(--ink); }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 28px; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 15px;
+      border: 1px solid var(--green);
+      border-radius: 6px;
+      background: var(--green);
+      color: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      transition: transform .2s, background .2s;
+    }
+    .button:hover { transform: translateY(-2px); background: #0d5949; }
+    .button.secondary { color: var(--green); background: transparent; }
+    .hero-note { margin-top: 17px; color: var(--muted-2); font: 11px var(--mono); }
+
+    .dashboard {
+      position: relative;
+      padding: 13px;
+      border: 1px solid #cfded7;
+      border-radius: 11px;
+      background: #e7f0eb;
+      box-shadow: var(--shadow);
+      transform: rotate(1.1deg);
+    }
+    .dashboard-window { overflow: hidden; border: 1px solid #cad9d1; border-radius: 7px; background: var(--paper); }
+    .window-bar { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: #fbfcfb; }
+    .window-dot { width: 7px; height: 7px; border-radius: 50%; background: #cad3d0; }
+    .window-title { margin: auto; color: var(--muted-2); font: 10px var(--mono); }
+    .dash-body { display: grid; grid-template-columns: 145px 1fr; min-height: 335px; }
+    .dash-side { padding: 17px 11px; border-right: 1px solid var(--line); background: #f7faf8; }
+    .dash-logo { margin: 2px 8px 22px; color: var(--green); font-weight: 800; font-size: 13px; }
+    .dash-nav { display: grid; gap: 4px; color: var(--muted); font-size: 11px; }
+    .dash-nav span { padding: 8px; border-radius: 4px; }
+    .dash-nav span.active { color: var(--green); background: var(--mint); font-weight: 700; }
+    .dash-main { padding: 20px; }
+    .dash-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+    .dash-head h3 { margin-bottom: 4px; font-size: 19px; letter-spacing: -.04em; }
+    .dash-head p { margin-bottom: 0; color: var(--muted); font-size: 10px; }
+    .profile-chip { padding: 7px 9px; border: 1px solid #d7e8de; border-radius: 5px; color: var(--green); background: #f2fbf5; font: 10px var(--mono); white-space: nowrap; }
+    .dash-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 19px 0; }
+    .dash-stat { padding: 11px; border: 1px solid var(--line); border-radius: 5px; }
+    .dash-stat strong { display: block; font: 700 22px var(--mono); }
+    .dash-stat span { color: var(--muted); font-size: 10px; }
+    .match-card { padding: 15px; border: 1px solid #d2e7da; border-radius: 6px; background: #f4fbf6; }
+    .match-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .match-top strong { font-size: 13px; }
+    .score { color: var(--green); font: 700 21px var(--mono); }
+    .score-label { color: var(--muted); font-size: 10px; }
+    .progress { height: 7px; margin: 11px 0 12px; overflow: hidden; border-radius: 99px; background: #dce9e0; }
+    .progress i { display: block; width: 86%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--green-2), var(--yellow)); }
+    .match-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .match-tag { padding: 3px 6px; border-radius: 4px; color: var(--green); background: #def2e5; font: 9px var(--mono); }
+    .dash-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; color: var(--muted-2); font: 9px var(--mono); }
+
+    .section { padding: 70px 0; border-top: 1px solid var(--line); }
+    .section-head { display: flex; justify-content: space-between; align-items: end; gap: 30px; margin-bottom: 28px; }
+    h2 { margin-bottom: 0; font-size: clamp(28px, 4vw, 44px); line-height: 1.08; letter-spacing: -.055em; }
+    .section-intro { max-width: 490px; margin-bottom: 0; color: var(--muted); font-size: 14px; }
+
+    .pain-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; }
+    .pain { min-height: 188px; padding: 21px; border: 1px solid var(--line); border-radius: 7px; background: rgba(255,255,255,.6); }
+    .pain-number { color: var(--red); font: 700 12px var(--mono); }
+    .pain h3 { margin: 27px 0 7px; font-size: 17px; }
+    .pain p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+
+    .pipeline { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .pipeline-step { position: relative; min-height: 193px; padding: 18px; border: 1px solid #cfe1d8; border-radius: 7px; background: var(--paper); box-shadow: 0 9px 22px rgba(32, 70, 61, .05); }
+    .pipeline-step:not(:last-child)::after { content: "→"; position: absolute; top: 46%; right: -18px; z-index: 2; color: var(--green-2); font: 18px var(--mono); }
+    .pipeline-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 6px; color: var(--green); background: var(--mint); font: 16px var(--mono); }
+    .pipeline-step h3 { margin: 22px 0 7px; font-size: 15px; }
+    .pipeline-step p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.65; }
+    .pipeline-step small { display: block; margin-top: 15px; color: var(--green-2); font: 9px var(--mono); }
+
+    .feature-layout { display: grid; grid-template-columns: .82fr 1.18fr; gap: 20px; align-items: stretch; }
+    .feature-intro { padding: 26px; border-radius: 8px; color: #eaf8f1; background: var(--green); }
+    .feature-intro h3 { margin-bottom: 12px; color: #fff; font-size: 24px; letter-spacing: -.04em; }
+    .feature-intro p { color: #c9e8d8; font-size: 13px; }
+    .feature-intro .mono-line { margin-top: 27px; color: #e4f9ec; font: 11px/1.8 var(--mono); }
+    .feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .feature { padding: 18px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); }
+    .feature h3 { margin: 0 0 7px; font-size: 15px; }
+    .feature p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.65; }
+    .feature .feature-key { display: block; margin-bottom: 15px; color: var(--green-2); font: 10px var(--mono); }
+
+    .architecture { display: grid; grid-template-columns: 1.03fr .97fr; gap: 20px; align-items: center; }
+    .arch-diagram { overflow: hidden; border: 1px solid #cfe0d8; border-radius: 8px; background: #102a2d; }
+    .arch-diagram img { display: block; width: 100%; height: 100%; min-height: 285px; object-fit: cover; }
+    .reuse-list { display: grid; gap: 9px; }
+    .reuse-item { display: grid; grid-template-columns: 31px 1fr; gap: 11px; padding: 14px; border: 1px solid var(--line); border-radius: 6px; background: rgba(255,255,255,.58); }
+    .reuse-index { color: var(--green); font: 11px var(--mono); }
+    .reuse-item strong { display: block; margin-bottom: 3px; font-size: 13px; }
+    .reuse-item span { color: var(--muted); font-size: 11px; }
+
+    .demo-layout { display: grid; grid-template-columns: .8fr 1.2fr; gap: 20px; }
+    .demo-script, .command-box { padding: 23px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .demo-script h3, .command-box h3 { margin-bottom: 9px; font-size: 18px; }
+    .demo-script > p, .command-box > p { color: var(--muted); font-size: 12px; }
+    .demo-steps { display: grid; gap: 11px; margin-top: 20px; }
+    .demo-step { display: grid; grid-template-columns: 27px 1fr; gap: 10px; align-items: start; }
+    .demo-step b { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: #fff; background: var(--green); font: 11px var(--mono); }
+    .demo-step span { color: var(--muted); font-size: 12px; }
+    .commands { display: grid; gap: 8px; }
+    .command { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 12px; border-radius: 5px; background: #102124; }
+    .command code { overflow-wrap: anywhere; color: #cceee0; font: 11px/1.55 var(--mono); }
+    .command button { padding: 3px 7px; border: 1px solid #4b7267; border-radius: 4px; color: #bce8d1; background: transparent; cursor: pointer; font-size: 10px; }
+    .command button:hover { color: #fff; border-color: var(--green-2); }
+    .copy-note { min-height: 18px; margin-top: 12px; color: var(--green-2); font: 11px var(--mono); }
+
+    .footer { padding: 34px 0 50px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    .footer-inner { display: flex; justify-content: space-between; gap: 20px; }
+    .footer strong { color: var(--ink); }
+
+    @media (max-width: 940px) {
+      .hero-grid, .feature-layout, .architecture, .demo-layout { grid-template-columns: 1fr; }
+      .hero-grid { gap: 40px; }
+      .pipeline { grid-template-columns: repeat(3, 1fr); }
+      .pipeline-step:not(:last-child)::after { display: none; }
+    }
+    @media (max-width: 650px) {
+      .wrap { width: min(100% - 28px, 1160px); }
+      nav { display: none; }
+      .hero { padding: 58px 0 54px; }
+      .hero-copy { font-size: 15px; }
+      .dashboard { transform: none; }
+      .dash-body { grid-template-columns: 1fr; }
+      .dash-side { display: none; }
+      .dash-main { padding: 15px; }
+      .pain-grid, .pipeline, .feature-grid { grid-template-columns: 1fr; }
+      .section { padding: 54px 0; }
+      .section-head { display: block; }
+      .section-intro { margin-top: 14px; }
+      .footer-inner { display: block; }
+      .footer .demo-badge { margin-top: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="#top" aria-label="返回顶部">
+        <img src="assets/logo.png" alt="OpenHarness logo">
+        <span>JobHunt <small>AGENT</small></span>
+      </a>
+      <nav aria-label="页面导航">
+        <a class="active" href="#problem">项目价值</a>
+        <a href="#workflow">功能闭环</a>
+        <a href="#features">核心功能</a>
+        <a href="#architecture">技术实现</a>
+        <a href="#demo">现场演示</a>
+      </nav>
+      <div class="demo-badge">DEMO READY</div>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <div class="eyebrow">// COMPUTER_JOB_HUNT_AGENT</div>
+          <h1>让求职准备，<em>从零散信息变成行动计划。</em></h1>
+          <p class="hero-copy">
+            这是一个面向计算机求职者的全流程智能 Agent：
+            它理解你的简历，也理解岗位要求，能够完成简历分析、岗位检索、匹配评估、技能补强、面试准备和投递追踪。
+          </p>
+          <div class="hero-actions">
+            <a class="button" href="#workflow">↓ 查看求职闭环</a>
+            <a class="button secondary" href="#demo">准备现场演示 →</a>
+          </div>
+          <p class="hero-note">项目定位：求职领域 Agent · 本地优先 · CLI + Web UI</p>
+        </div>
+        <div class="dashboard" aria-label="求职 Agent 仪表盘预览">
+          <div class="dashboard-window">
+            <div class="window-bar"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span class="window-title">jobhunt / dashboard</span></div>
+            <div class="dash-body">
+              <aside class="dash-side">
+                <div class="dash-logo">JOBHUNT_AGENT</div>
+                <div class="dash-nav">
+                  <span class="active">总览 Dashboard</span>
+                  <span>岗位搜索</span>
+                  <span>简历管理</span>
+                  <span>面试准备</span>
+                  <span>投递看板</span>
+                </div>
+              </aside>
+              <div class="dash-main">
+                <div class="dash-head"><div><h3>你好，开始下一次求职行动</h3><p>基于当前画像和岗位库生成建议</p></div><div class="profile-chip">PROFILE READY</div></div>
+                <div class="dash-stats"><div class="dash-stat"><strong>18</strong><span>已收藏岗位</span></div><div class="dash-stat"><strong>07</strong><span>进行中投递</span></div><div class="dash-stat"><strong>86</strong><span>平均匹配分</span></div></div>
+                <div class="match-card"><div class="match-top"><strong>Python 后端工程师</strong><span class="score">86<span class="score-label"> / 100</span></span></div><div class="progress"><i></i></div><div class="match-tags"><span class="match-tag">Python</span><span class="match-tag">FastAPI</span><span class="match-tag">PostgreSQL</span><span class="match-tag">缺口：K8s</span></div></div>
+                <div class="dash-foot"><span>推荐：匹配岗位</span><span>更新时间：刚刚</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="problem">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="section-kicker">// problem_to_product</div><h2>求职信息很多，但下一步不清楚。</h2></div>
+          <p class="section-intro">项目针对计算机求职过程中最常见的三个断点，把“材料、判断、行动”连接起来。</p>
+        </div>
+        <div class="pain-grid">
+          <article class="pain"><div class="pain-number">01 / 材料分散</div><h3>简历和岗位要求无法对齐</h3><p>用户知道自己做过什么，却很难快速判断哪些经历应该突出、哪些技能还没有被岗位看见。</p></article>
+          <article class="pain"><div class="pain-number">02 / 判断模糊</div><h3>岗位很多，不知道是否值得投</h3><p>只看岗位标题容易误判。真正需要的是技能、经验、项目和要求之间的可解释匹配结果。</p></article>
+          <article class="pain"><div class="pain-number">03 / 行动断裂</div><h3>投递之后，准备和跟进容易丢失</h3><p>简历优化、面试练习、求职信和投递状态分散在不同工具里，无法形成连续的工作流。</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="workflow">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="section-kicker">// end_to_end_workflow</div><h2>从一份简历开始，走完一条求职链路。</h2></div>
+          <p class="section-intro">Agent 不只负责聊天，而是把求职过程拆解成可执行、可检查、可持续推进的步骤。</p>
+        </div>
+        <div class="pipeline">
+          <article class="pipeline-step"><div class="pipeline-icon">01</div><h3>建立求职画像</h3><p>解析简历中的经历、技能、项目和目标偏好，形成后续分析的统一输入。</p><small>resume → profile</small></article>
+          <article class="pipeline-step"><div class="pipeline-icon">02</div><h3>导入与搜索岗位</h3><p>导入岗位、面经和本地知识，支持按关键词、城市和薪资进行检索。</p><small>jobs → retrieval</small></article>
+          <article class="pipeline-step"><div class="pipeline-icon">03</div><h3>匹配与找差距</h3><p>输出匹配分、覆盖技能、部分覆盖和缺口，并解释分数来自哪里。</p><small>jd × resume → score</small></article>
+          <article class="pipeline-step"><div class="pipeline-icon">04</div><h3>准备面试材料</h3><p>生成定制简历草稿、求职信、面试题和答题提示，围绕目标岗位准备。</p><small>gap → preparation</small></article>
+          <article class="pipeline-step"><div class="pipeline-icon">05</div><h3>持续追踪投递</h3><p>维护投递记录、状态、备注和提醒，形成从申请到面试的行动看板。</p><small>apply → follow up</small></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="section-kicker">// jobhunt_capabilities</div><h2>真正面向求职任务的 Agent 能力。</h2></div>
+          <p class="section-intro">功能不是泛化的聊天入口，而是围绕求职者每天会做的具体动作组织起来。</p>
+        </div>
+        <div class="feature-layout">
+          <div class="feature-intro">
+            <h3>一个 Agent，覆盖五类关键工作。</h3>
+            <p>领域工具负责确定性处理，Agent 负责理解上下文、组合能力和给出下一步建议。用户可以通过 CLI 或 Web UI 使用同一套业务逻辑。</p>
+            <div class="mono-line">RESUME → JOB → MATCH → PREPARE → TRACK</div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature"><span class="feature-key">01 / RESUME</span><h3>简历解析与优化</h3><p>解析简历结构、技能和经历，计算 ATS 维度，并根据目标 JD 生成针对性修改建议。</p></article>
+            <article class="feature"><span class="feature-key">02 / JOB SEARCH</span><h3>岗位导入与检索</h3><p>支持岗位、面经和知识文档导入，基于 RAG 检索岗位信息和相关准备材料。</p></article>
+            <article class="feature"><span class="feature-key">03 / JOB MATCH</span><h3>岗位匹配与技能差距</h3><p>计算技能、经验、学历、项目等维度的匹配结果，输出覆盖项与缺口证据。</p></article>
+            <article class="feature"><span class="feature-key">04 / INTERVIEW</span><h3>面试与算法练习</h3><p>按岗位和目标公司生成面试题、答题提示，并优先结合本地导入的面经知识。</p></article>
+            <article class="feature"><span class="feature-key">05 / MATERIAL</span><h3>求职信与职业路径</h3><p>基于简历和 JD 生成个性化求职信，并从画像推导职业方向、里程碑和补强技能。</p></article>
+            <article class="feature"><span class="feature-key">06 / APPLICATION</span><h3>投递看板与提醒</h3><p>记录公司、岗位、渠道、状态和备注，限制状态非法回退，并提供跟进提醒。</p></article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="architecture">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="section-kicker">// built_on_openharness</div><h2>重点是求职应用，底座复用 OpenHarness。</h2></div>
+          <p class="section-intro">OpenHarness 是骨架，不是页面主角。它让我可以把精力集中在求职领域逻辑，而不是重新搭建 Agent 基础设施。</p>
+        </div>
+        <div class="architecture">
+          <div class="arch-diagram"><img src="assets/architecture-comic.png" alt="模型思考、Harness 执行、任务完成的流程图"></div>
+          <div class="reuse-list">
+            <div class="reuse-item"><div class="reuse-index">01</div><div><strong>Agent loop 与上下文组装</strong><span>复用消息循环、模型调用、上下文和求职画像注入，让 Agent 能根据任务组合多个求职工具。</span></div></div>
+            <div class="reuse-item"><div class="reuse-index">02</div><div><strong>Tools / Skills / Plugins 机制</strong><span>复用工具注册和技能加载机制，把简历、匹配、面试、求职信和投递能力接入统一入口。</span></div></div>
+            <div class="reuse-item"><div class="reuse-index">03</div><div><strong>RAG、记忆与本地会话</strong><span>复用知识检索、会话恢复和本地存储思路，支持岗位库、面经和用户画像持续积累。</span></div></div>
+            <div class="reuse-item"><div class="reuse-index">04</div><div><strong>权限、CLI 与 Web API</strong><span>复用权限检查、命令体系和 API 层，让求职功能同时支持安全执行、终端演示与 Web 仪表盘。</span></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="demo">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="section-kicker">// tomorrow_demo_script</div><h2>现场演示：展示一次真实的求职决策。</h2></div>
+          <p class="section-intro">建议不要从底层架构开始讲，直接拿一份简历和一个目标岗位，展示 Agent 如何给出有依据的下一步。</p>
+        </div>
+        <div class="demo-layout">
+          <div class="demo-script">
+            <h3>三分钟演示顺序</h3>
+            <p>从用户问题开始：“这份简历适合不适合这个岗位？我下一步该做什么？”</p>
+            <div class="demo-steps">
+              <div class="demo-step"><b>1</b><span>解析简历，展示技能、经历和 ATS 信息。</span></div>
+              <div class="demo-step"><b>2</b><span>导入或搜索 Python 后端岗位，查看 JD 结构。</span></div>
+              <div class="demo-step"><b>3</b><span>运行岗位匹配，展示分数、覆盖技能和 3 个差距。</span></div>
+              <div class="demo-step"><b>4</b><span>继续生成面试准备或新增一条投递记录，形成闭环。</span></div>
+            </div>
+          </div>
+          <div class="command-box">
+            <h3>可以直接复制的演示命令</h3>
+            <p>离线环境也可以演示，使用 hash embedding 避免依赖外部模型。</p>
+            <div class="commands">
+              <div class="command"><code>oh job-hunt setup --yes --embedding-provider hash</code><button data-copy="oh job-hunt setup --yes --embedding-provider hash">复制</button></div>
+              <div class="command"><code>oh job-hunt resume parse ./examples/sample_data/resume.md</code><button data-copy="oh job-hunt resume parse ./examples/sample_data/resume.md">复制</button></div>
+              <div class="command"><code>oh job-hunt import --dir ./examples/sample_data/jobs --collection jobs</code><button data-copy="oh job-hunt import --dir ./examples/sample_data/jobs --collection jobs">复制</button></div>
+              <div class="command"><code>oh job-hunt match --resume ./examples/sample_data/resume.md --jd ./examples/sample_data/jobs/python-backend.md</code><button data-copy="oh job-hunt match --resume ./examples/sample_data/resume.md --jd ./examples/sample_data/jobs/python-backend.md">复制</button></div>
+              <div class="command"><code>uv run --extra web oh job-hunt web --host 127.0.0.1 --port 8000</code><button data-copy="uv run --extra web oh job-hunt web --host 127.0.0.1 --port 8000">复制</button></div>
+            </div>
+            <div class="copy-note" id="copy-note" aria-live="polite"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <div><strong>JobHunt Agent</strong> · a computer job-search workflow built on OpenHarness</div>
+      <div class="demo-badge">LOCAL FIRST · READY TO DEMO</div>
+    </div>
+  </footer>
+
+  <script>
+    const navLinks = [...document.querySelectorAll("nav a")];
+    const sections = navLinks.map((link) => document.querySelector(link.getAttribute("href"))).filter(Boolean);
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          navLinks.forEach((link) => link.classList.toggle("active", link.getAttribute("href") === "#" + entry.target.id));
+        }
+      });
+    }, { rootMargin: "-30% 0px -60% 0px" });
+    sections.forEach((section) => observer.observe(section));
+
+    document.querySelectorAll("[data-copy]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(button.dataset.copy);
+          document.querySelector("#copy-note").textContent = "✓ 已复制到剪贴板";
+        } catch {
+          document.querySelector("#copy-note").textContent = "请手动复制命令";
+        }
+        window.setTimeout(() => { document.querySelector("#copy-note").textContent = ""; }, 2200);
+      });
+    });
+  </script>
+</body>
+</html>

@@ -60,7 +60,7 @@ class SkillGapAnalyzeTool(JobHuntToolBase):
     ) -> ToolResult:
         if not arguments.jd_text.strip():
             return error_result("'jd_text' must be non-empty")
-        profile = self.resolve_store(context).load_profile()
+        profile = self.resolve_profile(context)
         has_resume = bool(arguments.resume_text and arguments.resume_text.strip())
         if not has_resume and not profile:
             return error_result(
