@@ -1,0 +1,145 @@
+[
+  {
+    "id": "int-fa178cbc",
+    "position": "Python 后端开发工程师",
+    "company": "",
+    "round": "技术",
+    "difficulty": "混合",
+    "skill_source": "jd",
+    "created_at": "2026-09-22T11:22:21Z",
+    "status": "进行中",
+    "current_index": 0,
+    "questions": [
+      {
+        "question": "Python 的 GIL 是什么？它对多线程程序有什么影响？",
+        "category": "八股文",
+        "topic": "python",
+        "difficulty": "基础",
+        "hint": "全局解释器锁：同一时刻只有一个线程执行字节码；CPU 密集用多进程，IO 密集多线程仍有效"
+      },
+      {
+        "question": "如何判断链表是否有环？如何找到环的入口节点？",
+        "category": "算法",
+        "topic": "algorithm",
+        "difficulty": "基础",
+        "hint": "快慢指针相遇判环；相遇后一指针回到头部同速前进，再次相遇处即入口（附数学推导）"
+      },
+      {
+        "question": "如何设计一个短链接系统？",
+        "category": "系统设计",
+        "topic": "system_design",
+        "difficulty": "进阶",
+        "hint": "发号器/哈希生成短码；映射存 Redis+DB；302 vs 301 的选择；热点与统计"
+      },
+      {
+        "question": "请介绍一个你在项目中使用 Python 的场景：背景、你的方案和量化结果是什么？",
+        "category": "项目",
+        "topic": "project",
+        "difficulty": "进阶",
+        "hint": "用 STAR 结构作答：背景→任务→你的行动→量化结果；重点讲技术选型的取舍与踩坑。"
+      },
+      {
+        "question": "谈谈 Python 的内存管理与垃圾回收机制。",
+        "category": "八股文",
+        "topic": "python",
+        "difficulty": "进阶",
+        "hint": "引用计数为主，标记-清除与分代回收处理循环引用；gc 模块可手动干预；注意 __del__ 的坑"
+      },
+      {
+        "question": "常见排序算法的时间复杂度、空间复杂度与稳定性？",
+        "category": "算法",
+        "topic": "algorithm",
+        "difficulty": "基础",
+        "hint": "快排平均 O(nlogn) 不稳定；归并稳定但 O(n) 空间；堆排不稳定；冒泡/插入稳定"
+      },
+      {
+        "question": "如何设计秒杀系统？关键难点有哪些？",
+        "category": "系统设计",
+        "topic": "system_design",
+        "difficulty": "困难",
+        "hint": "网关限流 + 库存预扣；Redis 原子扣减、异步下单削峰；防超卖、幂等与对账兜底"
+      },
+      {
+        "question": "你在项目中如何使用 FastAPI？遇到过哪些难点，如何定位并解决的？",
+        "category": "项目",
+        "topic": "project",
+        "difficulty": "进阶",
+        "hint": "用 STAR 结构作答：背景→任务→你的行动→量化结果；重点讲技术选型的取舍与踩坑。"
+      }
+    ],
+    "evaluations": [
+      {
+        "question_index": null,
+        "question": "什么是 GIL？它如何影响 Python 的多线程性能？",
+        "answer": "首先，GIL 是 CPython 的全局解释器锁：同一时刻只有一个线程能执行 Python 字节码，所以多线程无法利用多核做并行计算，CPU 密集型任务的性能提升很有限。然后，我的做法是把 CPU 密集模块改用多进程，接口耗时从 2s 降低到 200ms，吞吐提升大约 3 倍。最后做个总结：IO 密集型保留多线程仍然有效，因为等待 IO 时 GIL 会释放；如果必须多核并行，就换成多进程或 C 扩展。",
+        "score": 94.0,
+        "grade": "优秀",
+        "dimensions": [
+          {
+            "name": "内容覆盖",
+            "score": 40.0,
+            "max_score": 40.0,
+            "advice": "回答覆盖了问题的核心关键词"
+          },
+          {
+            "name": "回答结构",
+            "score": 30.0,
+            "max_score": 30.0,
+            "advice": "建议按“背景/问题 → 做法 → 结果”结构作答，突出取舍与权衡"
+          },
+          {
+            "name": "细节与量化",
+            "score": 14.0,
+            "max_score": 20.0,
+            "advice": "有量化细节，继续保持"
+          },
+          {
+            "name": "表达与条理",
+            "score": 10.0,
+            "max_score": 10.0,
+            "advice": "表达长度适中"
+          }
+        ],
+        "missing_keywords": [],
+        "suggestions": [],
+        "evaluated_at": "2026-09-22T11:22:21Z"
+      },
+      {
+        "question_index": null,
+        "question": "谈谈 Python 的内存管理与垃圾回收机制",
+        "answer": "首先，GIL 是 CPython 的全局解释器锁：同一时刻只有一个线程能执行 Python 字节码，所以多线程无法利用多核做并行计算，CPU 密集型任务的性能提升很有限。然后，我的做法是把 CPU 密集模块改用多进程，接口耗时从 2s 降低到 200ms，吞吐提升大约 3 倍。最后做个总结：IO 密集型保留多线程仍然有效，因为等待 IO 时 GIL 会释放；如果必须多核并行，就换成多进程或 C 扩展。",
+        "score": 94.0,
+        "grade": "优秀",
+        "dimensions": [
+          {
+            "name": "内容覆盖",
+            "score": 40.0,
+            "max_score": 40.0,
+            "advice": "回答覆盖了问题的核心关键词"
+          },
+          {
+            "name": "回答结构",
+            "score": 30.0,
+            "max_score": 30.0,
+            "advice": "建议按“背景/问题 → 做法 → 结果”结构作答，突出取舍与权衡"
+          },
+          {
+            "name": "细节与量化",
+            "score": 14.0,
+            "max_score": 20.0,
+            "advice": "有量化细节，继续保持"
+          },
+          {
+            "name": "表达与条理",
+            "score": 10.0,
+            "max_score": 10.0,
+            "advice": "表达长度适中"
+          }
+        ],
+        "missing_keywords": [],
+        "suggestions": [],
+        "evaluated_at": "2026-09-22T11:22:21Z"
+      }
+    ]
+  }
+]

@@ -74,6 +74,28 @@ oh job-hunt applications update APP_ID --status 一面 --note "已约面"
 
 状态只能向前推进，或者从活动状态标记为 `已拒绝`。终态记录不能继续编辑状态。
 
+## 面试练习
+
+Web UI 的“面试准备”页面支持完整练习闭环：
+
+1. 填写公司、岗位、JD、简历文本、轮次、难度和题量。
+2. 创建会话后一次回答一道题。
+3. 提交回答后获得总分、分维度评分、缺失关键词和改进建议。
+4. 完成或提前结束后，在历史练习中查看报告和逐题复盘。
+
+相关接口为：
+
+```text
+POST /api/interview/practice
+GET  /api/interview/sessions
+GET  /api/interview/sessions/{id}
+POST /api/interview/sessions/{id}/answer
+POST /api/interview/sessions/{id}/finish
+```
+
+项目面试表达、演示顺序和高频追问见
+[项目面试准备稿](interview-playbook.md)。
+
 ## Web UI
 
 ```bash

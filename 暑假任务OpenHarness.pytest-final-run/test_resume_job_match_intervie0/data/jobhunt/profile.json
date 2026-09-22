@@ -1,0 +1,25 @@
+{
+  "privacy": {
+    "ai_enabled": true,
+    "allowed_sections": [
+      "basic",
+      "skills",
+      "education",
+      "experience",
+      "preferences",
+      "job_search_status"
+    ],
+    "include_sensitive_fields": false,
+    "include_contact_fields": false
+  },
+  "basic": {
+    "target_cities": [
+      "杭州"
+    ]
+  },
+  "preferences": {
+    "target_positions": [
+      "Python 后端工程师"
+    ]
+  }
+}

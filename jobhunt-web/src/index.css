@@ -356,6 +356,102 @@ body {
   place-items: center;
 }
 
+.interview-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.82fr) minmax(420px, 1.5fr) minmax(250px, 0.78fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.interview-config-card,
+.interview-history-card {
+  position: sticky;
+  top: 0;
+}
+
+.interview-session-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.interview-empty-card {
+  min-height: 340px;
+  display: grid;
+  place-items: center;
+}
+
+.interview-question-area {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #e3e9e6;
+}
+
+.interview-question-area .ant-typography {
+  margin-bottom: 0;
+}
+
+.interview-feedback {
+  border-color: #d5e6df;
+  background: #fbfefc;
+}
+
+.interview-feedback-alert {
+  margin: 16px 0;
+}
+
+.interview-dimension {
+  padding: 10px;
+  border: 1px solid #e6ece9;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.interview-dimension-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.interview-dimension .ant-progress {
+  margin: 5px 0 2px;
+}
+
+.interview-report-stats {
+  margin-bottom: 16px;
+}
+
+.interview-review-list {
+  margin-top: 16px;
+}
+
+.interview-answer-preview {
+  max-height: 150px;
+  margin-bottom: 0;
+  padding: 10px;
+  overflow: auto;
+  white-space: pre-wrap;
+  background: #f4f7f6;
+  border-radius: 4px;
+}
+
+.interview-history-item {
+  padding: 10px 6px !important;
+  cursor: pointer;
+  border-radius: 6px;
+  border-block-end: 0 !important;
+}
+
+.interview-history-item:hover,
+.interview-history-item.active {
+  background: #e8f4f0;
+}
+
 @media (max-width: 900px) {
   .content-grid {
     grid-template-columns: 1fr;
@@ -375,6 +471,15 @@ body {
 
   .agent-activity {
     display: none;
+  }
+
+  .interview-layout {
+    grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+  }
+
+  .interview-history-card {
+    position: static;
+    grid-column: 1 / -1;
   }
 }
 
@@ -430,5 +535,14 @@ body {
 
   .agent-conversation {
     min-height: 0;
+  }
+
+  .interview-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .interview-config-card,
+  .interview-history-card {
+    position: static;
   }
 }

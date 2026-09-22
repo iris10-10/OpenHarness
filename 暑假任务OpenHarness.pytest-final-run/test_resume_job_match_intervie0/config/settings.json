@@ -1,0 +1,403 @@
+{
+  "api_key": "",
+  "model": "claude-sonnet-4-6",
+  "max_tokens": 16384,
+  "base_url": null,
+  "timeout": 30.0,
+  "context_window_tokens": null,
+  "auto_compact_threshold_tokens": null,
+  "api_format": "anthropic",
+  "provider": "anthropic",
+  "active_profile": "claude-api",
+  "profiles": {
+    "claude-api": {
+      "label": "Anthropic-Compatible API",
+      "provider": "anthropic",
+      "api_format": "anthropic",
+      "auth_source": "anthropic_api_key",
+      "default_model": "claude-sonnet-4-6",
+      "base_url": null,
+      "last_model": null,
+      "credential_slot": null,
+      "allowed_models": [],
+      "context_window_tokens": null,
+      "auto_compact_threshold_tokens": null
+    },
+    "claude-subscription": {
+      "label": "Claude Subscription",
+      "provider": "anthropic_claude",
+      "api_format": "anthropic",
+      "auth_source": "claude_subscription",
+      "default_model": "claude-sonnet-4-6",
+      "base_url": null,
+      "last_model": null,
+      "credential_slot": null,
+      "allowed_models": [],
+      "context_window_tokens": null,
+      "auto_compact_threshold_tokens": null
+    },
+    "openai-compatible": {
+      "label": "OpenAI-Compatible API",
+      "provider": "openai",
+      "api_format": "openai",
+      "auth_source": "openai_api_key",
+      "default_model": "gpt-5.4",
+      "base_url": null,
+      "last_model": null,
+      "credential_slot": null,
+      "allowed_models": [],
+      "context_window_tokens": null,
+      "auto_compact_threshold_tokens": null
+    },
+    "codex": {
+      "label": "Codex Subscription",
+      "provider": "openai_codex",
+      "api_format": "openai",
+      "auth_source": "codex_subscription",
+      "default_model": "gpt-5.4",
+      "base_url": null,
+      "last_model": null,
+      "credential_slot": null,
+      "allowed_models": [],
+      "context_window_tokens": null,
+      "auto_compact_threshold_tokens": null
+    },
+    "copilot": {
+      "label": "GitHub Copilot",
+      "provider": "copilot",
+      "api_format": "copilot",
+      "auth_source": "copilot_oauth",
+      "default_model": "gpt-5.4",
+      "base_url": null,
+      "last_model": null,
+      "credential_slot": null,
+      "allowed_models": [],
+      "context_window_tokens": null,
+      "auto_compact_threshold_tokens": null
+    },
+    "moonshot": {
+      "label": "Moonshot (Kimi)",
+      "provider": "moonshot",
+      "api_format": "openai",
+      "auth_source": "moonshot_api_key",
+      "default_model": "kimi-k2.5",
+      "base_url": "https://api.moonshot.cn/v1",
+      "last_model": null,
+      "credential_slot": null,
+      "allowed_models": [],
+      "context_window_tokens": null,
+      "auto_compact_threshold_tokens": null
+    },
+    "gemini": {
+      "label": "Google Gemini",
+      "provider": "gemini",
+      "api_format": "openai",
+      "auth_source": "gemini_api_key",
+      "default_model": "gemini-2.5-flash",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "last_model": null,
+      "credential_slot": null,
+      "allowed_models": [],
+      "context_window_tokens": null,
+      "auto_compact_threshold_tokens": null
+    },
+    "minimax": {
+      "label": "MiniMax",
+      "provider": "minimax",
+      "api_format": "openai",
+      "auth_source": "minimax_api_key",
+      "default_model": "MiniMax-M2.7",
+      "base_url": "https://api.minimax.io/v1",
+      "last_model": null,
+      "credential_slot": null,
+      "allowed_models": [],
+      "context_window_tokens": null,
+      "auto_compact_threshold_tokens": null
+    },
+    "nvidia": {
+      "label": "NVIDIA NIM",
+      "provider": "nvidia",
+      "api_format": "openai",
+      "auth_source": "nvidia_api_key",
+      "default_model": "openai/gpt-oss-120b",
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "last_model": null,
+      "credential_slot": null,
+      "allowed_models": [],
+      "context_window_tokens": null,
+      "auto_compact_threshold_tokens": null
+    },
+    "qwen": {
+      "label": "Qwen (DashScope)",
+      "provider": "dashscope",
+      "api_format": "openai",
+      "auth_source": "dashscope_api_key",
+      "default_model": "qwen-plus",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "last_model": null,
+      "credential_slot": null,
+      "allowed_models": [],
+      "context_window_tokens": null,
+      "auto_compact_threshold_tokens": null
+    },
+    "modelscope": {
+      "label": "ModelScope",
+      "provider": "modelscope",
+      "api_format": "openai",
+      "auth_source": "modelscope_api_key",
+      "default_model": "deepseek-ai/DeepSeek-V4-Flash",
+      "base_url": "https://api-inference.modelscope.cn/v1",
+      "last_model": null,
+      "credential_slot": null,
+      "allowed_models": [],
+      "context_window_tokens": null,
+      "auto_compact_threshold_tokens": null
+    }
+  },
+  "max_turns": 200,
+  "system_prompt": null,
+  "permission": {
+    "mode": "default",
+    "allowed_tools": [],
+    "denied_tools": [],
+    "path_rules": [],
+    "denied_commands": []
+  },
+  "hooks": {},
+  "memory": {
+    "enabled": true,
+    "max_files": 5,
+    "max_entrypoint_lines": 200,
+    "max_entrypoint_bytes": 25000,
+    "context_window_tokens": null,
+    "auto_compact_threshold_tokens": null,
+    "auto_extract_enabled": false,
+    "auto_extract_max_records": 3,
+    "session_memory_enabled": true,
+    "auto_dream_enabled": false,
+    "auto_dream_min_hours": 24.0,
+    "auto_dream_min_sessions": 5
+  },
+  "sandbox": {
+    "enabled": false,
+    "backend": "srt",
+    "fail_if_unavailable": false,
+    "enabled_platforms": [],
+    "network": {
+      "allowed_domains": [],
+      "denied_domains": []
+    },
+    "filesystem": {
+      "allow_read": [],
+      "deny_read": [],
+      "allow_write": [
+        "."
+      ],
+      "deny_write": []
+    },
+    "docker": {
+      "image": "openharness-sandbox:latest",
+      "auto_build_image": true,
+      "cpu_limit": 0.0,
+      "memory_limit": "",
+      "extra_mounts": [],
+      "extra_env": {}
+    }
+  },
+  "web": {
+    "proxy": null,
+    "resolution_mode": "auto",
+    "synthetic_dns_cidrs": []
+  },
+  "rag": {
+    "enabled": true,
+    "persist_directory": "E:\\暑假任务\\OpenHarness\\暑假任务OpenHarness.pytest-final-run\\test_resume_job_match_intervie0\\data\\rag",
+    "default_collection": "knowledge",
+    "max_chunks_per_document": 400,
+    "embedding": {
+      "provider": "hash",
+      "openai_model": "text-embedding-3-small",
+      "api_key": "",
+      "base_url": "",
+      "local_model": "BAAI/bge-m3",
+      "cache_enabled": false,
+      "cache_ttl_days": 30
+    },
+    "chunking": {
+      "chunk_tokens": 512,
+      "overlap_tokens": 64,
+      "strategy": "semantic"
+    },
+    "retrieval": {
+      "vector_top_k": 20,
+      "final_top_n": 5,
+      "candidate_pool": 200,
+      "hybrid_alpha": 0.7,
+      "rerank_strategy": "auto",
+      "context_budget_ratio": 0.25,
+      "max_context_tokens": 4000
+    }
+  },
+  "job_hunt": {
+    "data_directory": "",
+    "language": "zh",
+    "target_cities": [
+      "杭州"
+    ],
+    "target_positions": [
+      "Python 后端工程师"
+    ],
+    "expected_salary_min": null,
+    "expected_salary_max": null,
+    "years_of_experience": null,
+    "default_company_types": [],
+    "matching": {
+      "weight_skills": 0.35,
+      "weight_experience": 0.2,
+      "weight_education": 0.1,
+      "weight_projects": 0.15,
+      "weight_soft_skills": 0.1,
+      "weight_other": 0.1,
+      "freshness_days": 30,
+      "freshness_boost": 0.1,
+      "match_threshold": 65.0,
+      "safety_threshold": 80.0,
+      "top_k": 10
+    },
+    "reminder": {
+      "follow_up_days": 7,
+      "stale_days": 14
+    }
+  },
+  "scraping": {
+    "enabled": false,
+    "account_safe_mode": true,
+    "provider_server": "",
+    "provider_name": "",
+    "provider_tools": {
+      "list_sources": "list_sources",
+      "search_jobs": "search_jobs",
+      "get_job_details": "get_job_details"
+    },
+    "allowed_sources": [],
+    "cache_freshness_hours": 6,
+    "max_results": 30,
+    "max_pages": 1,
+    "max_details": 0,
+    "max_response_bytes": 2000000,
+    "respect_robots_txt": true,
+    "request_delay_min": 2.0,
+    "request_delay_max": 5.0,
+    "max_requests_per_minute": 10,
+    "max_retries": 3,
+    "backoff_base_seconds": 0.5,
+    "timeout_seconds": 30.0,
+    "proxy": "",
+    "proxy_http": "",
+    "proxy_https": "",
+    "user_agents": [
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15"
+    ],
+    "boss": {
+      "enabled": false,
+      "base_url": "https://www.zhipin.com",
+      "username": "",
+      "password": "",
+      "cookie": "",
+      "token": "",
+      "request_interval_min": 1.0,
+      "request_interval_max": 3.0
+    },
+    "lagou": {
+      "enabled": false,
+      "base_url": "https://www.lagou.com",
+      "username": "",
+      "password": "",
+      "cookie": "",
+      "token": "",
+      "request_interval_min": 1.0,
+      "request_interval_max": 3.0
+    },
+    "nowcoder": {
+      "enabled": false,
+      "base_url": "https://www.nowcoder.com",
+      "username": "",
+      "password": "",
+      "cookie": "",
+      "token": "",
+      "request_interval_min": 1.0,
+      "request_interval_max": 3.0
+    },
+    "leetcode": {
+      "enabled": false,
+      "base_url": "https://leetcode.cn",
+      "username": "",
+      "password": "",
+      "cookie": "",
+      "token": "",
+      "request_interval_min": 1.0,
+      "request_interval_max": 3.0
+    },
+    "tianyancha": {
+      "enabled": false,
+      "base_url": "https://www.tianyancha.com",
+      "username": "",
+      "password": "",
+      "cookie": "",
+      "token": "",
+      "request_interval_min": 1.0,
+      "request_interval_max": 3.0
+    },
+    "maimai": {
+      "enabled": false,
+      "base_url": "https://maimai.cn",
+      "username": "",
+      "password": "",
+      "cookie": "",
+      "token": "",
+      "request_interval_min": 1.0,
+      "request_interval_max": 3.0
+    },
+    "github": {
+      "enabled": true,
+      "base_url": "https://api.github.com",
+      "username": "",
+      "password": "",
+      "cookie": "",
+      "token": "",
+      "request_interval_min": 1.0,
+      "request_interval_max": 3.0
+    }
+  },
+  "enabled_plugins": {},
+  "allow_project_plugins": false,
+  "allow_project_skills": true,
+  "project_skill_dirs": [
+    ".openharness/skills",
+    ".agents/skills",
+    ".claude/skills"
+  ],
+  "mcp_servers": {},
+  "theme": "default",
+  "output_style": "default",
+  "vim_mode": false,
+  "voice_mode": false,
+  "fast_mode": false,
+  "effort": "medium",
+  "passes": 1,
+  "verbose": false,
+  "vision": {
+    "model": "",
+    "api_key": "",
+    "base_url": ""
+  },
+  "image_generation": {
+    "provider": "auto",
+    "model": "gpt-image-2",
+    "api_key": "",
+    "base_url": "",
+    "codex_model": "gpt-5.4",
+    "codex_base_url": ""
+  }
+}

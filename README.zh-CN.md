@@ -72,6 +72,7 @@ OpenHarness 还提供本地优先的求职 Agent：支持简历解析、岗位�
 - [求职用户手册](docs/jobhunt/user-guide.md)
 - [常见问题](docs/jobhunt/faq.md)
 - [架构说明](docs/jobhunt/architecture.md)
+- [项目面试准备稿](docs/jobhunt/interview-playbook.md)
 - [扩展开发指南](docs/jobhunt/extension-guide.md)
 
 最小离线演示：

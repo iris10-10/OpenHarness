@@ -120,7 +120,22 @@ class InterviewPracticeRequest(BaseModel):
     position: str = ""
     round: str = "技术"
     jd_text: str = ""
-    count: int = 8
+    resume_text: str = ""
+    difficulty: str = "混合"
+    count: int = Field(default=8, ge=1, le=20)
+
+
+class InterviewAnswerRequest(BaseModel):
+    """One answer submitted for the current interview question."""
+
+    answer: str = Field(min_length=1, max_length=20_000)
+    question_index: int | None = Field(default=None, ge=0)
+
+
+class InterviewFinishRequest(BaseModel):
+    """Optional context for ending an interview early."""
+
+    reason: str = Field(default="", max_length=500)
 
 
 class ProfileUpdateRequest(BaseModel):

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "int-d81f2c40",
+    "position": "后端工程师",
+    "company": "",
+    "round": "技术",
+    "difficulty": "混合",
+    "skill_source": "",
+    "created_at": "2026-09-22T11:22:21Z",
+    "status": "进行中",
+    "current_index": 0,
+    "questions": [
+      {
+        "question": "Python 的 GIL 是什么？它对多线程程序有什么影响？",
+        "category": "八股文",
+        "topic": "python",
+        "difficulty": "基础",
+        "hint": "全局解释器锁：同一时刻只有一个线程执行字节码；CPU 密集用多进程，IO 密集多线程仍有效"
+      },
+      {
+        "question": "如何判断链表是否有环？如何找到环的入口节点？",
+        "category": "算法",
+        "topic": "algorithm",
+        "difficulty": "基础",
+        "hint": "快慢指针相遇判环；相遇后一指针回到头部同速前进，再次相遇处即入口（附数学推导）"
+      },
+      {
+        "question": "如何设计一个短链接系统？",
+        "category": "系统设计",
+        "topic": "system_design",
+        "difficulty": "进阶",
+        "hint": "发号器/哈希生成短码；映射存 Redis+DB；302 vs 301 的选择；热点与统计"
+      },
+      {
+        "question": "JVM 的内存区域如何划分？对象在堆中是如何分配与回收的？",
+        "category": "八股文",
+        "topic": "java",
+        "difficulty": "进阶",
+        "hint": "堆/虚拟机栈/本地方法栈/方法区/程序计数器；TLAB 分配、Eden→Survivor→老年代；可达性分析"
+      },
+      {
+        "question": "常见排序算法的时间复杂度、空间复杂度与稳定性？",
+        "category": "算法",
+        "topic": "algorithm",
+        "difficulty": "基础",
+        "hint": "快排平均 O(nlogn) 不稳定；归并稳定但 O(n) 空间；堆排不稳定；冒泡/插入稳定"
+      },
+      {
+        "question": "如何设计秒杀系统？关键难点有哪些？",
+        "category": "系统设计",
+        "topic": "system_design",
+        "difficulty": "困难",
+        "hint": "网关限流 + 库存预扣；Redis 原子扣减、异步下单削峰；防超卖、幂等与对账兜底"
+      },
+      {
+        "question": "Go 的 goroutine 与 GMP 调度模型如何工作？",
+        "category": "八股文",
+        "topic": "golang",
+        "difficulty": "进阶",
+        "hint": "G/M/P 三角色；本地队列 + 全局队列 + work stealing；sysmon 抢占；channel/网络轮询让出"
+      },
+      {
+        "question": "二叉树的前中后序与层序遍历如何实现（递归与迭代）？",
+        "category": "算法",
+        "topic": "algorithm",
+        "difficulty": "基础",
+        "hint": "递归本质是栈；迭代用显式栈；层序用队列 BFS；可延伸 Morris 遍历 O(1) 空间"
+      }
+    ],
+    "evaluations": []
+  }
+]

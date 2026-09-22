@@ -294,6 +294,7 @@ class InterviewPracticeTool(JobHuntToolBase):
             "skill_source": skill_source,
             "created_at": now,
             "status": "进行中",
+            "current_index": 0,
             "questions": [_question_dict(question) for question in questions],
             "evaluations": [],
         }
@@ -347,6 +348,11 @@ class InterviewFeedbackToolInput(BaseModel):
         default="",
         description="Optional practice session id: the evaluation is recorded into it",
     )
+    question_index: int = Field(
+        default=-1,
+        ge=-1,
+        description="Question index within a practice session, when recording feedback",
+    )
 
 
 class InterviewFeedbackTool(JobHuntToolBase):
@@ -382,10 +388,11 @@ class InterviewFeedbackTool(JobHuntToolBase):
         round_kind = "行为" if arguments.round == "行为" else "技术"
         evaluation = evaluate_interview_answer(question, answer, round_kind=round_kind)
         grade = _feedback_grade(evaluation.score)
+        evaluation_payload = _evaluation_payload(evaluation)
         payload: dict[str, Any] = {
             "position": arguments.position.strip(),
             "round": arguments.round,
-            **_evaluation_payload(evaluation),
+            **evaluation_payload,
             "grade": grade,
         }
 
@@ -406,9 +413,18 @@ class InterviewFeedbackTool(JobHuntToolBase):
                 evaluations = target.setdefault("evaluations", [])
                 evaluations.append(
                     {
+                        "question_index": (
+                            arguments.question_index
+                            if arguments.question_index >= 0
+                            else None
+                        ),
                         "question": _excerpt(question, _QUESTION_EXCERPT_LIMIT),
+                        "answer": answer,
                         "score": evaluation.score,
                         "grade": grade,
+                        "dimensions": evaluation_payload["dimensions"],
+                        "missing_keywords": evaluation_payload["missing_keywords"],
+                        "suggestions": evaluation_payload["suggestions"],
                         "evaluated_at": utc_now_iso(),
                     }
                 )
