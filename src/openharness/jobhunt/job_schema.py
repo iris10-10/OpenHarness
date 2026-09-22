@@ -186,6 +186,11 @@ class SourceRegistration:
     source_code: str
     source_site: str
     allowed_domains: tuple[str, ...]
+    default_company: str = ""
+    company_id: str = ""
+    official_career_url: str = ""
+    aliases: tuple[str, ...] = ()
+    departments: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         code = self.source_code.strip()
@@ -200,6 +205,38 @@ class SourceRegistration:
         object.__setattr__(self, "source_code", code)
         object.__setattr__(self, "source_site", site[:120])
         object.__setattr__(self, "allowed_domains", domains)
+        object.__setattr__(self, "default_company", sanitize_external_text(self.default_company, max_chars=200))
+        object.__setattr__(self, "company_id", sanitize_external_text(self.company_id, max_chars=120))
+        career_url = self.official_career_url.strip()
+        object.__setattr__(
+            self,
+            "official_career_url",
+            canonicalize_https_url(career_url, allowed_domains=domains, field_name="official_career_url")
+            if career_url
+            else "",
+        )
+        object.__setattr__(
+            self,
+            "aliases",
+            tuple(
+                dict.fromkeys(
+                    sanitize_external_text(item, max_chars=200)
+                    for item in self.aliases
+                    if sanitize_external_text(item, max_chars=200)
+                )
+            ),
+        )
+        object.__setattr__(
+            self,
+            "departments",
+            tuple(
+                dict.fromkeys(
+                    sanitize_external_text(item, max_chars=120)
+                    for item in self.departments
+                    if sanitize_external_text(item, max_chars=120)
+                )
+            ),
+        )
 
     def validate_url(self, url: str, *, field_name: str = "source_url") -> str:
         return canonicalize_https_url(url, allowed_domains=self.allowed_domains, field_name=field_name)
@@ -218,11 +255,22 @@ class SourceRegistry:
             domains = value.get("allowed_domains") or value.get("domains") or ()
             if isinstance(domains, str):
                 domains = [domains]
+            aliases = value.get("aliases") or ()
+            if isinstance(aliases, str):
+                aliases = [aliases]
+            departments = value.get("departments") or ()
+            if isinstance(departments, str):
+                departments = [departments]
             registrations.append(
                 SourceRegistration(
                     source_code=str(value.get("source_code") or value.get("code") or ""),
                     source_site=str(value.get("source_site") or value.get("site") or ""),
                     allowed_domains=tuple(str(domain) for domain in domains),
+                    default_company=str(value.get("default_company") or ""),
+                    company_id=str(value.get("company_id") or ""),
+                    official_career_url=str(value.get("official_career_url") or ""),
+                    aliases=tuple(str(item) for item in aliases),
+                    departments=tuple(str(item) for item in departments),
                 )
             )
         return cls(registrations)
@@ -310,6 +358,7 @@ class JobRecord:
     company_size: str = ""
     industry: str = ""
     financing: str = ""
+    department: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -339,6 +388,7 @@ class JobRecord:
             "company_size": self.company_size,
             "industry": self.industry,
             "financing": self.financing,
+            "department": self.department,
         }
 
     def to_rag_text(self) -> str:
@@ -417,7 +467,8 @@ def normalize_job_record(
     now = fetched_at or utc_now_iso()
     title = sanitize_external_text(_first(raw, "title", "jobName", "positionName", "name"), max_chars=200)
     company = sanitize_external_text(
-        _first(raw, "company", "companyName", "brandName"), max_chars=200
+        _first(raw, "company", "companyName", "brandName") or registration.default_company,
+        max_chars=200,
     )
     if not title or not company:
         raise JobSchemaError("title and company are required")
@@ -474,6 +525,10 @@ def normalize_job_record(
         ),
         financing=sanitize_external_text(
             _first(raw, "financing", "financeStage", "financeStageName"), max_chars=100
+        ),
+        department=sanitize_external_text(
+            _first(raw, "department", "departmentName", "bg_name", "bgName", "BGName"),
+            max_chars=120,
         ),
     )
 

@@ -3,6 +3,7 @@ import type { Job } from "../types";
 
 export interface JobFilters {
   query?: string;
+  company?: string;
   city?: string;
   direction?: string;
   company_type?: string;
@@ -28,7 +29,12 @@ export interface JobSyncStatus {
   provider_configured: boolean;
   provider_name: string;
   provider_server: string;
-  allowed_sources: Array<{ source_code: string; source_site: string; allowed_domains: string[] }>;
+  allowed_sources: Array<{
+    source_code: string;
+    source_site: string;
+    allowed_domains: string[];
+    default_company?: string;
+  }>;
   limits: {
     max_results: number;
     max_pages: number;
@@ -47,6 +53,17 @@ export interface JobSyncStatus {
     failed_count: number;
     started_at: string;
     finished_at: string;
+    sources?: Array<{
+      source_code: string;
+      source_site: string;
+      fetched_count: number;
+      inserted_count: number;
+      updated_count: number;
+      skipped_count: number;
+      failed_count: number;
+      stale_count: number;
+      error: string;
+    }>;
   }>;
 }
 
@@ -81,4 +98,30 @@ export function matchJobs(resume_text: string, job_ids: string[] = []) {
 
 export function importJob(payload: Partial<Job>) {
   return apiSend<{ job: Job }>("/jobs/import", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  aliases: string[];
+  source_codes: string[];
+  official_career_url: string;
+  job_count: number;
+  cities: string[];
+  departments: string[];
+  latest_job_published_at: string;
+  last_synced_at: string;
+  status: string;
+}
+
+export function getCompanies(query = "", page = 1, page_size = 20) {
+  const params = new URLSearchParams({ page: String(page), page_size: String(page_size) });
+  if (query.trim()) params.set("query", query.trim());
+  return apiGet<{ items: Company[]; total: number; page: number; page_size: number }>(
+    `/companies?${params.toString()}`,
+  );
+}
+
+export function getCompany(companyId: string) {
+  return apiGet<{ company: Company; jobs: Job[] }>(`/companies/${encodeURIComponent(companyId)}`);
 }

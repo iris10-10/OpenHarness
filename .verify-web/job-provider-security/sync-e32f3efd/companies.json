@@ -1,0 +1,19 @@
+[
+  {
+    "id": "company:7b95c1fa2ce9a5560ea8",
+    "name": "示例科技",
+    "aliases": [],
+    "source_codes": [
+      "provider_x"
+    ],
+    "official_career_url": "",
+    "job_count": 1,
+    "cities": [
+      "杭州"
+    ],
+    "departments": [],
+    "latest_job_published_at": "",
+    "last_synced_at": "2026-09-21T15:47:31Z",
+    "status": "stale"
+  }
+]

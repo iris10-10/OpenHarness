@@ -42,6 +42,7 @@ PROFILE_FILENAME = "profile.json"
 APPLICATIONS_FILENAME = "applications.json"
 SESSIONS_FILENAME = "interview_sessions.json"
 JOBS_FILENAME = "jobs.json"
+COMPANIES_FILENAME = "companies.json"
 SYNC_RUNS_FILENAME = "job_sync_runs.json"
 
 #模拟面试会话的保留上限，避免文件无限增长
@@ -152,6 +153,11 @@ class JobHuntStore:
         return self.directory / JOBS_FILENAME
 
     @property
+    def companies_path(self) -> Path:
+        """Return the derived company library snapshot path."""
+        return self.directory / COMPANIES_FILENAME
+
+    @property
     def sync_runs_path(self) -> Path:
         """Return the bounded synchronization audit history path."""
         return self.directory / SYNC_RUNS_FILENAME
@@ -209,6 +215,17 @@ class JobHuntStore:
     def save_jobs(self, jobs: list[dict[str, Any]]) -> None:
         """Persist canonical job snapshots atomically."""
         _write_json(self.jobs_path, jobs)
+
+    def load_companies(self) -> list[dict[str, Any]]:
+        """Return derived company library records."""
+        payload = _read_json(self.companies_path, [])
+        if not isinstance(payload, list):
+            return []
+        return [item for item in payload if isinstance(item, dict)]
+
+    def save_companies(self, companies: list[dict[str, Any]]) -> None:
+        """Persist derived company library records atomically."""
+        _write_json(self.companies_path, companies)
 
     def load_sync_runs(self, *, limit: int = 50) -> list[dict[str, Any]]:
         """Return newest synchronization audit records."""

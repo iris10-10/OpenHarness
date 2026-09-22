@@ -42,6 +42,7 @@ class JobCreateRequest(BaseModel):
 
 class JobSearchRequest(BaseModel):
     query: str = Field(default="", max_length=200)
+    company: str = Field(default="", max_length=200)
     city: str = Field(default="", max_length=100)
     direction: str = Field(default="", max_length=100)
     company_type: str = Field(default="", max_length=100)
@@ -52,6 +53,12 @@ class JobSearchRequest(BaseModel):
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=10, ge=1, le=50)
     sync: bool = False
+
+
+class CompanySearchRequest(BaseModel):
+    query: str = Field(default="", max_length=200)
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
 
 
 class JobSyncRequest(BaseModel):

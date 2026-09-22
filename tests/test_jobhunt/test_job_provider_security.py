@@ -48,6 +48,30 @@ def _registry() -> SourceRegistry:
     )
 
 
+def _multi_registry() -> SourceRegistry:
+    return SourceRegistry.from_mappings(
+        [
+            {
+                "source_code": "bad_jobs",
+                "source_site": "故障岗位服务",
+                "allowed_domains": ["bad.example.com"],
+                "default_company": "故障公司",
+                "company_id": "bad",
+            },
+            {
+                "source_code": "provider_x",
+                "source_site": "示例岗位服务",
+                "allowed_domains": ["jobs.example.com"],
+                "default_company": "示例科技",
+                "company_id": "example",
+                "official_career_url": "https://jobs.example.com",
+                "aliases": ["Example Tech"],
+                "departments": ["研发"],
+            },
+        ]
+    )
+
+
 def _job(record_id: str = "abc123", **updates: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "id": record_id,
@@ -257,6 +281,230 @@ def test_safe_public_jobs_provider_fetches_reviewed_sources_only() -> None:
     assert "script" not in normalize_job_record(jobs[0], provider=provider.provider_name, registry=registry).description
 
 
+def test_public_job_sync_isolates_source_failures_and_projects_companies() -> None:
+    registry = _multi_registry()
+    sources = [
+        {
+            "source_code": "bad_jobs",
+            "source_site": "故障岗位服务",
+            "allowed_domains": ["bad.example.com"],
+            "search_url_template": "https://bad.example.com/search?q={query}",
+            "default_company": "故障公司",
+        },
+        {
+            "source_code": "provider_x",
+            "source_site": "示例岗位服务",
+            "allowed_domains": ["jobs.example.com"],
+            "search_url_template": "https://jobs.example.com/search?q={query}",
+            "default_company": "示例科技",
+            "company_id": "example",
+            "official_career_url": "https://jobs.example.com",
+            "aliases": ["Example Tech"],
+            "departments": ["研发"],
+        },
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "bad.example.com":
+            return httpx.Response(500, text="temporary outage")
+        return httpx.Response(
+            200,
+            json={
+                "jobs": [
+                    {
+                        "id": "safe-1",
+                        "source_code": "provider_x",
+                        "source_url": "https://jobs.example.com/jobs/safe-1",
+                        "title": "Python 后端工程师",
+                        "city": "杭州",
+                        "department": "平台工程",
+                        "published_at": "2026年09月20日",
+                    }
+                ]
+            },
+        )
+
+    provider = SafePublicJobsProvider(
+        sources,
+        registry=registry,
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+        request_delay_min=0,
+        request_delay_max=0,
+        respect_robots_txt=False,
+    )
+    store = JobHuntStore(_workspace_tmp("multi-sync"))
+    service = JobSearchService(
+        store,
+        registry=registry,
+        provider=provider,
+        limits=JobSyncLimits(max_results=10, max_details=0),
+    )
+
+    report = service.sync(JobSearchQuery(query="Python", limit=10))
+
+    assert report.inserted_count == 1
+    assert report.failed_count == 1
+    assert store.load_jobs()[0]["company"] == "示例科技"
+    companies = store.load_companies()
+    assert companies[0]["id"] == "company:id-example"
+    assert companies[0]["job_count"] == 1
+    assert companies[0]["cities"] == ["杭州"]
+    assert set(companies[0]["departments"]) == {"平台工程", "研发"}
+    assert companies[0]["official_career_url"] == "https://jobs.example.com/"
+    by_source = {item["source_code"]: item for item in report.to_dict()["sources"]}
+    assert by_source["bad_jobs"]["failed_count"] == 1
+    assert by_source["provider_x"]["fetched_count"] == 1
+
+
+def test_safe_public_jobs_provider_supports_official_post_json_sources() -> None:
+    registry = SourceRegistry.from_mappings(
+        [
+            {
+                "source_code": "meituan_careers",
+                "source_site": "美团招聘",
+                "allowed_domains": ["zhaopin.meituan.com"],
+                "default_company": "美团",
+            }
+        ]
+    )
+    source = {
+        "source_code": "meituan_careers",
+        "source_site": "美团招聘",
+        "allowed_domains": ["zhaopin.meituan.com"],
+        "search_url_template": "https://zhaopin.meituan.com/api/official/job/getJobList",
+        "search_method": "POST",
+        "search_body": {
+            "page": {"pageNo": "{page}", "pageSize": "{limit}"},
+            "jobShareType": "1",
+            "keywords": "{query}",
+            "cityList": [],
+            "department": [],
+            "jfJgList": [],
+            "jobType": [{"code": "3", "subCode": []}],
+            "typeCode": [],
+            "specialCode": [],
+        },
+        "request_headers": {
+            "Content-Type": "application/json",
+            "Origin": "https://zhaopin.meituan.com",
+        },
+        "job_url_template": "https://zhaopin.meituan.com/web/position/detail?jobUnionId={provider_record_id}",
+        "default_company": "美团",
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/api/official/job/getJobList"
+        assert request.headers.get("authorization") is None
+        assert request.headers.get("cookie") is None
+        payload = json.loads(request.content.decode("utf-8"))
+        assert payload["keywords"] == "Python"
+        assert payload["page"]["pageSize"] == 5
+        return httpx.Response(
+            200,
+            json={
+                "data": {
+                    "list": [
+                        {
+                            "jobUnionId": "7390001",
+                            "name": "服务端开发工程师",
+                            "cityList": [{"name": "北京"}],
+                            "department": [{"name": "基础研发"}],
+                            "jobDuty": "负责业务系统开发",
+                            "jobRequirement": "熟悉 Python",
+                            "refreshTime": 1789999202000,
+                        }
+                    ]
+                }
+            },
+        )
+
+    provider = SafePublicJobsProvider(
+        [source],
+        registry=registry,
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+        request_delay_min=0,
+        request_delay_max=0,
+        respect_robots_txt=False,
+    )
+
+    jobs = list(provider.search_jobs({"query": "Python", "limit": 5, "page": 1}))
+    normalized = normalize_job_record(jobs[0], provider=provider.provider_name, registry=registry)
+
+    assert normalized.company == "美团"
+    assert normalized.city == "北京"
+    assert normalized.department == "基础研发"
+    assert normalized.source_url == "https://zhaopin.meituan.com/web/position/detail?jobUnionId=7390001"
+
+
+def test_public_provider_attempts_later_sources_after_first_source_fills_limit() -> None:
+    registry = SourceRegistry.from_mappings(
+        [
+            {
+                "source_code": "first_source",
+                "source_site": "第一个来源",
+                "allowed_domains": ["first.example.com"],
+                "default_company": "第一家公司",
+            },
+            {
+                "source_code": "second_source",
+                "source_site": "第二个来源",
+                "allowed_domains": ["second.example.com"],
+                "default_company": "第二家公司",
+            },
+        ]
+    )
+    sources = [
+        {
+            "source_code": "first_source",
+            "source_site": "第一个来源",
+            "allowed_domains": ["first.example.com"],
+            "search_url_template": "https://first.example.com/jobs?q={query}",
+            "default_company": "第一家公司",
+        },
+        {
+            "source_code": "second_source",
+            "source_site": "第二个来源",
+            "allowed_domains": ["second.example.com"],
+            "search_url_template": "https://second.example.com/jobs?q={query}",
+            "default_company": "第二家公司",
+        },
+    ]
+    called_hosts: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        called_hosts.append(str(request.url.host))
+        source_code = "first_source" if request.url.host == "first.example.com" else "second_source"
+        return httpx.Response(
+            200,
+            json={
+                "jobs": [
+                    {
+                        "id": f"{source_code}-1",
+                        "source_code": source_code,
+                        "source_url": f"https://{request.url.host}/jobs/1",
+                        "title": "工程师",
+                        "company": "第一家公司" if source_code == "first_source" else "第二家公司",
+                    }
+                ]
+            },
+        )
+
+    provider = SafePublicJobsProvider(
+        sources,
+        registry=registry,
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+        request_delay_min=0,
+        request_delay_max=0,
+        respect_robots_txt=False,
+    )
+
+    jobs = list(provider.search_jobs({"query": "工程师", "limit": 1, "page": 1}))
+
+    assert called_hosts == ["first.example.com", "second.example.com"]
+    assert {str(job["source_code"]) for job in jobs} == {"first_source", "second_source"}
+
+
 def test_safe_public_jobs_provider_upgrades_approved_http_job_links() -> None:
     registry = _registry()
     source = {
@@ -402,3 +650,60 @@ def test_jobs_web_api_is_local_first_and_rejects_untrusted_manual_links(
         },
     )
     assert imported.status_code == 422
+
+    trusted_settings = {
+        "scraping": {
+            "allowed_sources": [
+                {
+                    "source_code": "provider_x",
+                    "source_site": "示例岗位服务",
+                    "allowed_domains": ["jobs.example.com"],
+                    "default_company": "示例科技",
+                    "company_id": "example",
+                    "official_career_url": "https://jobs.example.com",
+                }
+            ]
+        }
+    }
+    settings_path = tmp_path / "config" / "settings.json"
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(json.dumps(trusted_settings, ensure_ascii=False), encoding="utf-8")
+    imported = client.post(
+        "/api/jobs/import",
+        json={
+            "title": "测试岗位",
+            "company": "示例科技",
+            "source_url": "https://jobs.example.com/jobs/manual-1",
+        },
+    )
+    assert imported.status_code == 200
+    companies = client.get("/api/companies", params={"query": "示例"})
+    assert companies.status_code == 200
+    company_payload = companies.json()
+    assert company_payload["items"][0]["name"] == "示例科技"
+    assert company_payload["items"][0]["job_count"] >= 1
+
+
+def test_jobs_web_api_interleaves_sources_on_first_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tmp_path = _workspace_tmp("web")
+    monkeypatch.setenv("OPENHARNESS_CONFIG_DIR", str(tmp_path / "config"))
+    monkeypatch.setenv("OPENHARNESS_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("OPENHARNESS_JOBHUNT_DIR", str(tmp_path / "jobhunt"))
+    store = JobHuntStore(tmp_path / "jobhunt")
+    store.save_jobs(
+        [
+            _job("tencent-1", source_code="tencent_careers", company="腾讯"),
+            _job("tencent-2", source_code="tencent_careers", company="腾讯"),
+            _job("meituan-1", source_code="meituan_careers", company="美团"),
+            _job("meituan-2", source_code="meituan_careers", company="美团"),
+        ]
+    )
+    client = TestClient(create_app(static_dir=tmp_path / "missing-dist"))
+
+    listing = client.get("/api/jobs", params={"page_size": 3})
+
+    assert listing.status_code == 200
+    sources = [item["source_code"] for item in listing.json()["items"]]
+    assert sources == ["tencent_careers", "meituan_careers", "tencent_careers"]

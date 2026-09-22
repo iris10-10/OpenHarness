@@ -54,6 +54,14 @@ def save_jobs(jobs: list[dict[str, Any]]) -> None:
     get_store().save_jobs(jobs)
 
 
+def load_companies() -> list[dict[str, Any]]:
+    return get_store().load_companies()
+
+
+def save_companies(companies: list[dict[str, Any]]) -> None:
+    get_store().save_companies(companies)
+
+
 def load_resumes() -> list[dict[str, Any]]:
     payload = read_json_file(data_file(RESUMES_FILENAME), [])
     return [item for item in payload if isinstance(item, dict)] if isinstance(payload, list) else []

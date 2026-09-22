@@ -62,6 +62,29 @@ body {
   padding: 14px;
 }
 
+.company-library-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  min-height: 170px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e3e9e6;
+  border-radius: 8px;
+}
+
+.company-library-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.company-library-heading .ant-typography {
+  margin: 0;
+}
+
 .kanban {
   display: grid;
   grid-template-columns: repeat(6, minmax(220px, 1fr));

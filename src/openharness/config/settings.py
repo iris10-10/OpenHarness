@@ -1206,6 +1206,91 @@ def _normalize_settings_payload(raw: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+def _default_public_job_sources() -> list[dict[str, Any]]:
+    """Reviewed official career sources bundled with the job-hunt Web UI."""
+
+    return [
+        {
+            "source_code": "tencent_careers",
+            "source_site": "腾讯招聘",
+            "allowed_domains": ["careers.tencent.com"],
+            "search_url_template": (
+                "https://careers.tencent.com/tencentcareer/api/post/Query?"
+                "keyword={query}&pageIndex={page}&pageSize={limit}&language=zh-cn&area=cn"
+            ),
+            "default_company": "腾讯",
+            "company_id": "tencent",
+            "official_career_url": "https://careers.tencent.com",
+            "aliases": ["Tencent", "腾讯科技"],
+        },
+        {
+            "source_code": "bytedance_jobs",
+            "source_site": "字节跳动招聘",
+            "allowed_domains": ["jobs.bytedance.com"],
+            "default_company": "字节跳动",
+            "company_id": "bytedance",
+            "official_career_url": "https://jobs.bytedance.com",
+            "aliases": ["ByteDance", "抖音集团"],
+        },
+        {
+            "source_code": "meituan_careers",
+            "source_site": "美团招聘",
+            "allowed_domains": ["zhaopin.meituan.com"],
+            "search_url_template": "https://zhaopin.meituan.com/api/official/job/getJobList",
+            "search_method": "POST",
+            "search_body": {
+                "page": {
+                    "pageNo": "{page}",
+                    "pageSize": "{limit}",
+                },
+                "jobShareType": "1",
+                "keywords": "{query}",
+                "cityList": [],
+                "department": [],
+                "jfJgList": [],
+                "jobType": [{"code": "3", "subCode": []}],
+                "typeCode": [],
+                "specialCode": [],
+                "u_query_id": "",
+                "r_query_id": "",
+            },
+            "request_headers": {
+                "Content-Type": "application/json",
+                "Origin": "https://zhaopin.meituan.com",
+                "Referer": "https://zhaopin.meituan.com/web/position",
+            },
+            "job_url_template": "https://zhaopin.meituan.com/web/position/detail?jobUnionId={provider_record_id}",
+            "default_company": "美团",
+            "company_id": "meituan",
+            "official_career_url": "https://zhaopin.meituan.com",
+            "aliases": ["Meituan", "美团点评"],
+        },
+        {
+            "source_code": "alibaba_careers",
+            "source_site": "阿里巴巴招聘",
+            "allowed_domains": ["talent.alibaba.com"],
+            "default_company": "阿里巴巴",
+            "company_id": "alibaba",
+            "official_career_url": "https://talent.alibaba.com",
+            "aliases": ["Alibaba", "阿里"],
+        },
+    ]
+
+
+def _merge_default_public_job_sources(settings: Settings) -> Settings:
+    """Append bundled reviewed sources without overwriting user configuration."""
+
+    scraping = settings.scraping
+    if not scraping.enabled and not scraping.allowed_sources:
+        return settings
+    sources = [dict(item) for item in scraping.allowed_sources if isinstance(item, dict)]
+    seen = {str(item.get("source_code") or item.get("code") or "").strip() for item in sources}
+    for source in _default_public_job_sources():
+        if source["source_code"] not in seen:
+            sources.append(source)
+    return settings.model_copy(update={"scraping": scraping.model_copy(update={"allowed_sources": sources})})
+
+
 def load_settings(config_path: Path | None = None) -> Settings:
     """Load settings from config file, merging with defaults.
 
@@ -1237,13 +1322,17 @@ def load_settings(config_path: Path | None = None) -> Settings:
                     "profiles": merged_profiles,
                 }
             )
-        return _apply_env_overrides(settings.materialize_active_profile())
+        return _merge_default_public_job_sources(
+            _apply_env_overrides(settings.materialize_active_profile())
+        )
 
     settings = Settings()
     env_profile = os.environ.get("OPENHARNESS_PROFILE")
     if env_profile:
         settings = settings.model_copy(update={"active_profile": env_profile.strip()})
-    return _apply_env_overrides(settings.materialize_active_profile())
+    return _merge_default_public_job_sources(
+        _apply_env_overrides(settings.materialize_active_profile())
+    )
 
 
 def save_settings(settings: Settings, config_path: Path | None = None) -> None:

@@ -1,6 +1,7 @@
 import { Alert, App, Button, List, Pagination, Space, Tag, Typography } from "antd";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { createApplication } from "../api/applications";
 import { getJobSyncStatus, getJobs, syncJobs, type JobFilters } from "../api/jobs";
 import PageHeader from "../components/common/PageHeader";
@@ -13,7 +14,12 @@ import { RefreshCw } from "lucide-react";
 export default function JobsPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
-  const [filters, setFilters] = useState<JobFilters>({ page: 1, page_size: 6 });
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState<JobFilters>(() => ({
+    company: searchParams.get("company") || undefined,
+    page: 1,
+    page_size: 6,
+  }));
   const [detail, setDetail] = useState<Job | undefined>();
   const { data, isLoading } = useQuery({ queryKey: ["jobs", filters], queryFn: () => getJobs(filters) });
   const { data: syncStatus } = useQuery({ queryKey: ["job-sync-status"], queryFn: getJobSyncStatus });

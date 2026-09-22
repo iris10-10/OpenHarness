@@ -1,0 +1,52 @@
+[
+  {
+    "run_id": "job-sync-893e7db8ef6d4db0",
+    "provider": "trusted_jobs_mcp",
+    "source_code": "",
+    "tool_name": "search_jobs",
+    "query_digest": "22d00111050b16d3cc9a807e",
+    "started_at": "2026-09-21T12:42:32Z",
+    "finished_at": "2026-09-21T12:42:32Z",
+    "fetched_count": 0,
+    "inserted_count": 0,
+    "updated_count": 0,
+    "skipped_count": 0,
+    "stale_count": 1,
+    "failed_count": 1,
+    "errors": [
+      "temporary failure with token=<redacted>"
+    ],
+    "sources": [],
+    "server_version": ""
+  },
+  {
+    "run_id": "job-sync-cb0fc6419da24ca0",
+    "provider": "trusted_jobs_mcp",
+    "source_code": "provider_x",
+    "tool_name": "search_jobs",
+    "query_digest": "22d00111050b16d3cc9a807e",
+    "started_at": "2026-09-21T12:42:32Z",
+    "finished_at": "2026-09-21T12:42:32Z",
+    "fetched_count": 2,
+    "inserted_count": 1,
+    "updated_count": 0,
+    "skipped_count": 1,
+    "stale_count": 0,
+    "failed_count": 0,
+    "errors": [],
+    "sources": [
+      {
+        "source_code": "provider_x",
+        "source_site": "示例岗位服务",
+        "fetched_count": 2,
+        "inserted_count": 1,
+        "updated_count": 0,
+        "skipped_count": 0,
+        "failed_count": 0,
+        "stale_count": 0,
+        "error": ""
+      }
+    ],
+    "server_version": ""
+  }
+]

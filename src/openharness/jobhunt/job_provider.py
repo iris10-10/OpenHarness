@@ -14,7 +14,7 @@ import re
 import time
 import uuid
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 from typing import Any, Protocol
@@ -184,13 +184,13 @@ def _extract_assignment_json(script_body: str) -> str:
 class JobSyncLimits:
     """Hard resource limits enforced by OpenHarness."""
 
-    max_results: int = 50
+    max_results: int = 30
     max_pages: int = 1
-    max_details: int = 50
+    max_details: int = 0
     max_response_bytes: int = 2_000_000
     max_retries: int = 1
     max_concurrency: int = 1
-    freshness_hours: int = DEFAULT_FRESHNESS_HOURS
+    freshness_hours: int = 6
 
     def __post_init__(self) -> None:
         if self.max_results < 1 or self.max_results > 100:
@@ -472,6 +472,7 @@ class SafePublicJobsProvider:
         self._sleeper = sleeper
         self._last_request_at: float | None = None
         self._robots: dict[str, bool] = {}
+        self.last_source_errors: dict[str, str] = {}
         self._validate_configuration()
 
     def close(self) -> None:
@@ -527,26 +528,43 @@ class SafePublicJobsProvider:
         args = dict(query)
         limit = max(1, min(int(args.get("limit") or 10), 100))
         results: list[Mapping[str, Any]] = []
+        self.last_source_errors = {}
         for source in self._sources:
-            if len(results) >= limit:
-                break
             code = str(source.get("source_code") or source.get("code") or "").strip()
-            registration = self._registry.require(code)
-            template = str(source.get("search_url_template") or source.get("feed_url") or "").strip()
-            if not template:
-                continue
-            url = self._format_url(
-                template,
-                query=str(args.get("query") or ""),
-                city=str(args.get("city") or ""),
-                limit=limit - len(results),
-                page=int(args.get("page") or 1),
-            )
-            safe_url = registration.validate_url(url)
-            text = self._fetch(safe_url, registration=registration)
-            parsed = self._parse_jobs(text, source=source, base_url=safe_url)
-            results.extend(parsed[: limit - len(results)])
-        return results[:limit]
+            try:
+                registration = self._registry.require(code)
+                template = str(source.get("search_url_template") or source.get("feed_url") or "").strip()
+                if not template:
+                    continue
+                url = self._format_url(
+                    template,
+                    query=str(args.get("query") or ""),
+                    city=str(args.get("city") or ""),
+                    # Each source gets the same bounded page budget. The
+                    # synchronization service applies the aggregate cap after
+                    # all sources have had a chance to contribute.
+                    limit=limit,
+                    page=int(args.get("page") or 1),
+                )
+                safe_url = registration.validate_url(url)
+                method = str(source.get("search_method") or "GET").strip().upper()
+                text = self._fetch(
+                    safe_url,
+                    registration=registration,
+                    method=method,
+                    json_body=self._format_search_body(source.get("search_body"), args, limit=limit),
+                    headers=self._safe_request_headers(source.get("request_headers")),
+                )
+                parsed = self._parse_jobs(text, source=source, base_url=safe_url)
+                results.extend(parsed[:limit])
+            except SourceValidationError:
+                # An unapproved redirect/link is a hard safety violation,
+                # rather than a recoverable source outage.
+                raise
+            except Exception as exc:  # noqa: BLE001
+                # A failing source must not block later sources in the list.
+                self.last_source_errors[code] = type(exc).__name__
+        return results
 
     def get_job_details(
         self,
@@ -580,24 +598,89 @@ class SafePublicJobsProvider:
         except KeyError as exc:
             raise UnsafeJobProviderError(f"unsupported public job URL template field: {exc}") from exc
 
+    @classmethod
+    def _format_search_body(cls, value: Any, args: Mapping[str, Any], *, limit: int) -> Any:
+        page = int(args.get("page") or 1)
+        raw_values = {
+            "query": str(args.get("query") or ""),
+            "city": str(args.get("city") or ""),
+            "limit": max(1, min(int(args.get("limit") or limit), limit)),
+            "page": page,
+            "offset": max(0, page - 1) * max(1, min(int(args.get("limit") or limit), limit)),
+        }
+        if isinstance(value, Mapping):
+            return {
+                str(key): cls._format_search_body(child, raw_values, limit=limit)
+                for key, child in value.items()
+            }
+        if isinstance(value, list):
+            return [cls._format_search_body(child, raw_values, limit=limit) for child in value]
+        if isinstance(value, str):
+            if value in {"{limit}", "{page}", "{offset}"}:
+                return int(raw_values[value.strip("{}")])
+            try:
+                return value.format(**raw_values)
+            except KeyError as exc:
+                raise UnsafeJobProviderError(f"unsupported public job body template field: {exc}") from exc
+        return value
+
+    @staticmethod
+    def _safe_request_headers(value: Any) -> dict[str, str]:
+        if not isinstance(value, Mapping):
+            return {}
+        headers: dict[str, str] = {}
+        for key, raw in value.items():
+            name = str(key).strip()
+            lowered = name.lower()
+            if lowered in {"cookie", "authorization", "proxy-authorization", "x-api-key"}:
+                raise UnsafeJobProviderError(f"unsafe public job request header: {name}")
+            if lowered in {"accept", "content-type", "origin", "referer", "user-agent"}:
+                headers[name] = sanitize_external_text(raw, max_chars=500)
+        return headers
+
     def _client_for_request(self) -> httpx.Client:
         if self._client is None:
             self._client = httpx.Client(timeout=self._timeout_seconds, follow_redirects=True)
         return self._client
 
-    def _fetch(self, url: str, *, registration: Any) -> str:
+    def _fetch(
+        self,
+        url: str,
+        *,
+        registration: Any,
+        method: str = "GET",
+        json_body: Any | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> str:
         if self._respect_robots_txt and not self._robots_allows(url, registration=registration):
             raise JobProviderError("robots.txt disallows the configured job source")
         self._rate_limit()
         try:
-            response = self._client_for_request().get(
-                url,
-                headers={
-                    "User-Agent": self._user_agent,
-                    "Accept": "application/json,text/html;q=0.9,*/*;q=0.8",
-                },
-                follow_redirects=True,
-            )
+            request_headers = {
+                "User-Agent": self._user_agent,
+                "Accept": "application/json,text/html;q=0.9,*/*;q=0.8",
+                **dict(headers or {}),
+            }
+            if method == "POST":
+                response = self._client_for_request().post(
+                    url,
+                    headers=request_headers,
+                    json=json_body if json_body is not None else {},
+                    follow_redirects=True,
+                )
+            elif method == "GET":
+                response = self._client_for_request().get(
+                    url,
+                    headers=request_headers,
+                    follow_redirects=True,
+                )
+            else:
+                raise UnsafeJobProviderError(f"unsupported public job request method: {method}")
+            for hop in [*getattr(response, "history", []), response]:
+                if hop.is_redirect:
+                    location = hop.headers.get("location")
+                    if location:
+                        registration.validate_url(urljoin(str(hop.url), location))
             final_url = registration.validate_url(str(response.url))
             del final_url
             if len(response.content) > self._max_response_bytes:
@@ -684,11 +767,76 @@ class SafePublicJobsProvider:
             "salarydesc",
         }
         for payload in _extract_json_payloads(text, max_bytes=self._max_response_bytes):
+            records.extend(self._source_specific_json_jobs(payload, source=source, base_url=base_url))
             for item in _find_json_objects(payload, required_keys):
                 record = self._job_from_mapping(item, source=source, base_url=base_url)
                 if record.get("title") and record.get("company"):
                     records.append(record)
         return self._dedupe(records)
+
+    def _source_specific_json_jobs(
+        self,
+        payload: Any,
+        *,
+        source: Mapping[str, Any],
+        base_url: str,
+    ) -> list[Mapping[str, Any]]:
+        code = str(source.get("source_code") or source.get("code") or "").strip()
+        if code == "meituan_careers":
+            return self._parse_meituan_jobs(payload, source=source, base_url=base_url)
+        return []
+
+    def _parse_meituan_jobs(
+        self,
+        payload: Any,
+        *,
+        source: Mapping[str, Any],
+        base_url: str,
+    ) -> list[Mapping[str, Any]]:
+        if not isinstance(payload, Mapping):
+            return []
+        data = payload.get("data")
+        if not isinstance(data, Mapping):
+            return []
+        items = data.get("list")
+        if not isinstance(items, list):
+            return []
+        records: list[Mapping[str, Any]] = []
+        for item in items:
+            if not isinstance(item, Mapping):
+                continue
+            record_id = self._first(item, "jobUnionId", "id")
+            if not record_id:
+                continue
+            raw_url = self._format_job_url_template(source, record_id) or base_url
+            duty = self._first(item, "jobDuty", "desc")
+            requirement = self._first(item, "jobRequirement")
+            highlight = self._first(item, "highLight")
+            description = "\n\n".join(part for part in (duty, requirement, highlight) if part)
+            records.append(
+                {
+                    "provider_record_id": record_id,
+                    "source_code": str(source.get("source_code") or source.get("code") or ""),
+                    "source_url": self._absolute_source_url(raw_url, source=source, base_url=base_url),
+                    "apply_url": self._absolute_source_url(raw_url, source=source, base_url=base_url),
+                    "title": self._first(item, "name", "title"),
+                    "company": sanitize_external_text(source.get("default_company"), max_chars=200),
+                    "city": self._join_named_items(item.get("cityList")),
+                    "experience": self._first(item, "workYear"),
+                    "description": description,
+                    "department": self._join_named_items(item.get("department")),
+                    "published_at": self._first(item, "refreshTime", "firstPostTime"),
+                    "tags": [
+                        value
+                        for value in (
+                            self._first(item, "jobFamilyGroup"),
+                            self._first(item, "jobFamily"),
+                        )
+                        if value
+                    ],
+                }
+            )
+        return records
 
     def _parse_html_jobs(
         self,
@@ -729,7 +877,6 @@ class SafePublicJobsProvider:
             "href",
             "link",
         )
-        source_url = self._absolute_source_url(raw_url, source=source, base_url=base_url)
         record_id = self._first(
             item,
             "provider_record_id",
@@ -740,14 +887,14 @@ class SafePublicJobsProvider:
             "postId",
             "id",
         )
+        raw_url = raw_url or self._format_job_url_template(source, record_id)
+        source_url = self._absolute_source_url(raw_url, source=source, base_url=base_url)
         company = self._first(
             item,
             "company",
             "company_name",
             "companyName",
             "brandName",
-            "BGName",
-            "department",
         ) or sanitize_external_text(source.get("default_company"), max_chars=200)
         description = self._first(
             item,
@@ -806,6 +953,7 @@ class SafePublicJobsProvider:
             "company_size": self._first(item, "companySize", "scaleName", "staffSize"),
             "industry": self._first(item, "industry", "industryName", "industryField"),
             "financing": self._first(item, "financing", "financeStage", "financeStageName"),
+            "department": self._first(item, "department", "departmentName", "bgName", "BGName"),
             "published_at": self._first(
                 item,
                 "published_at",
@@ -860,6 +1008,20 @@ class SafePublicJobsProvider:
                 return sanitize_external_text(value, max_chars=2048)
         return ""
 
+    @staticmethod
+    def _join_named_items(value: Any) -> str:
+        if isinstance(value, list):
+            names = []
+            for item in value:
+                if isinstance(item, Mapping):
+                    text = sanitize_external_text(item.get("name"), max_chars=200)
+                else:
+                    text = sanitize_external_text(item, max_chars=200)
+                if text and text not in names:
+                    names.append(text)
+            return "、".join(names)
+        return sanitize_external_text(value, max_chars=500)
+
     def _absolute_source_url(
         self,
         raw_url: str,
@@ -876,6 +1038,16 @@ class SafePublicJobsProvider:
                 ("https", parsed.netloc, parsed.path or "/", parsed.query, "")
             )
         return registration.validate_url(candidate)
+
+    @staticmethod
+    def _format_job_url_template(source: Mapping[str, Any], record_id: str) -> str:
+        template = str(source.get("job_url_template") or "").strip()
+        if not template or not record_id:
+            return ""
+        try:
+            return template.format(provider_record_id=record_id, id=record_id)
+        except KeyError as exc:
+            raise UnsafeJobProviderError(f"unsupported public job URL template field: {exc}") from exc
 
     @staticmethod
     def _dedupe(records: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
@@ -952,6 +1124,7 @@ class JobSyncReport:
     stale_count: int = 0
     failed_count: int = 0
     errors: list[str] | None = None
+    sources: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -969,6 +1142,7 @@ class JobSyncReport:
             "stale_count": self.stale_count,
             "failed_count": self.failed_count,
             "errors": list(self.errors or []),
+            "sources": list(self.sources),
             "server_version": "",
         }
 
@@ -1051,20 +1225,65 @@ class JobSearchService:
             started_at=started,
             errors=[],
         )
+        source_codes: set[str] = set()
+        source_reports: dict[str, dict[str, Any]] = {}
         try:
             if self.provider is None:
                 raise JobProviderError("no provider configured")
             source_payload = list(self.provider.list_sources())
             self.registry.validate_provider_sources(source_payload)
-            if source_payload:
-                report.source_code = str(
-                    source_payload[0].get("source_code") or source_payload[0].get("code") or ""
-                )
+            source_codes = {
+                str(item.get("source_code") or item.get("code") or "").strip()
+                for item in source_payload
+                if str(item.get("source_code") or item.get("code") or "").strip()
+            }
+            report.source_code = ",".join(sorted(source_codes))
+            for code in source_codes:
+                registration = self.registry.get(code)
+                source_reports[code] = {
+                    "source_code": code,
+                    "source_site": registration.source_site if registration else "",
+                    "fetched_count": 0,
+                    "inserted_count": 0,
+                    "updated_count": 0,
+                    "skipped_count": 0,
+                    "failed_count": 0,
+                    "stale_count": 0,
+                    "error": "",
+                }
             raw_jobs = list(
                 self.provider.search_jobs(
                     query.to_provider_args(max_results=self.limits.max_results)
                 )
             )
+            provider_errors = dict(getattr(self.provider, "last_source_errors", {}) or {})
+            for code, error in provider_errors.items():
+                source_codes.add(code)
+                source_report = source_reports.setdefault(
+                    code,
+                    {
+                        "source_code": code,
+                        "source_site": self.registry.get(code).source_site
+                        if self.registry.get(code)
+                        else "",
+                        "fetched_count": 0,
+                        "inserted_count": 0,
+                        "updated_count": 0,
+                        "skipped_count": 0,
+                        "failed_count": 0,
+                        "stale_count": 0,
+                        "error": "",
+                    },
+                )
+                source_report["failed_count"] += 1
+                source_report["error"] = str(error)
+                report.failed_count += 1
+                report.errors.append(f"{code}: {error}")
+            if provider_errors:
+                report.stale_count = self._mark_stale(
+                    report.provider,
+                    set(provider_errors),
+                )
             if len(raw_jobs) > self.limits.max_results:
                 report.skipped_count += len(raw_jobs) - self.limits.max_results
                 raw_jobs = raw_jobs[: self.limits.max_results]
@@ -1073,44 +1292,74 @@ class JobSearchService:
             for raw in raw_jobs:
                 report.fetched_count += 1
                 candidate = dict(raw)
-                source_url = str(
-                    candidate.get("source_url")
-                    or candidate.get("sourceUrl")
-                    or candidate.get("url")
-                    or ""
-                )
-                record_id = str(
-                    candidate.get("provider_record_id")
-                    or candidate.get("providerRecordId")
-                    or candidate.get("job_id")
-                    or candidate.get("jobId")
-                    or candidate.get("id")
-                    or ""
-                )
-                if not candidate.get("description") and detail_count < self.limits.max_details:
-                    if not source_url or not record_id:
-                        raise JobSchemaError("detail lookup requires provider id and source URL")
-                    # The source URL is only passed after source validation below.
-                    source_code = str(candidate.get("source_code") or candidate.get("sourceCode") or "")
-                    registration = self.registry.require(source_code)
-                    approved_url = registration.validate_url(source_url)
-                    detail = self.provider.get_job_details(record_id, source_url=approved_url)
-                    candidate.update(dict(detail))
-                    detail_count += 1
-                normalized.append(
-                    normalize_job_record(
-                        candidate,
-                        provider=getattr(self.provider, "provider_name", "unknown"),
-                        registry=self.registry,
-                        fetched_at=started,
+                candidate_source = str(
+                    candidate.get("source_code") or candidate.get("sourceCode") or ""
+                ).strip()
+                source_report = source_reports.get(candidate_source)
+                if source_report is not None:
+                    source_report["fetched_count"] += 1
+                try:
+                    source_url = str(
+                        candidate.get("source_url")
+                        or candidate.get("sourceUrl")
+                        or candidate.get("url")
+                        or ""
                     )
-                )
+                    record_id = str(
+                        candidate.get("provider_record_id")
+                        or candidate.get("providerRecordId")
+                        or candidate.get("job_id")
+                        or candidate.get("jobId")
+                        or candidate.get("id")
+                        or ""
+                    )
+                    if not candidate.get("description") and detail_count < self.limits.max_details:
+                        if not source_url or not record_id:
+                            raise JobSchemaError("detail lookup requires provider id and source URL")
+                        registration = self.registry.require(candidate_source)
+                        approved_url = registration.validate_url(source_url)
+                        detail = self.provider.get_job_details(record_id, source_url=approved_url)
+                        candidate.update(dict(detail))
+                        detail_count += 1
+                    normalized.append(
+                        normalize_job_record(
+                            candidate,
+                            provider=getattr(self.provider, "provider_name", "unknown"),
+                            registry=self.registry,
+                            fetched_at=started,
+                        )
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    report.failed_count += 1
+                    error = self._safe_error(exc)
+                    report.errors.append(f"{candidate_source or 'unknown'}: {error}")
+                    if source_report is not None:
+                        source_report["failed_count"] += 1
+                        source_report["error"] = source_report["error"] or error
             accepted = self._dedupe_records(normalized, report)
+            report.sources = list(source_reports.values())
             self._persist_records(accepted, report)
         except Exception as exc:  # noqa: BLE001
             report.failed_count += 1
             report.errors.append(self._safe_error(exc))
-            report.stale_count = self._mark_stale(report.provider)
+            report.stale_count = self._mark_stale(report.provider, source_codes or None)
+            if not report.sources:
+                report.sources = [
+                    {
+                        "source_code": code,
+                        "source_site": self.registry.get(code).source_site
+                        if self.registry.get(code)
+                        else "",
+                        "fetched_count": 0,
+                        "inserted_count": 0,
+                        "updated_count": 0,
+                        "skipped_count": 0,
+                        "failed_count": 1,
+                        "stale_count": report.stale_count,
+                        "error": report.errors[-1],
+                    }
+                    for code in sorted(source_codes)
+                ]
         report.finished_at = _iso(self._now())
         self.store.append_sync_run(report.to_dict())
         return report
@@ -1221,6 +1470,7 @@ class JobSearchService:
     def _persist_records(self, records: Sequence[JobRecord], report: JobSyncReport) -> None:
         old_jobs = self.store.load_jobs()
         merged = list(old_jobs)
+        source_counts: dict[str, dict[str, int]] = {}
 
         def rebuild_indexes() -> tuple[
             dict[tuple[str, str], int],
@@ -1260,6 +1510,8 @@ class JobSearchService:
             if existing is None:
                 merged.append(payload)
                 report.inserted_count += 1
+                source_counts.setdefault(record.source_code, {}).setdefault("inserted_count", 0)
+                source_counts[record.source_code]["inserted_count"] += 1
             else:
                 persisted_id = str(existing.get("id") or record.id)
                 payload["id"] = persisted_id
@@ -1275,10 +1527,19 @@ class JobSearchService:
                     and persisted_id == record.id
                 ):
                     report.skipped_count += 1
+                    source_counts.setdefault(record.source_code, {}).setdefault("skipped_count", 0)
+                    source_counts[record.source_code]["skipped_count"] += 1
                 else:
                     report.updated_count += 1
+                    source_counts.setdefault(record.source_code, {}).setdefault("updated_count", 0)
+                    source_counts[record.source_code]["updated_count"] += 1
             self._project_to_rag(record, existing, persisted_id=str(payload["id"]))
         self.store.save_jobs(merged)
+        self._project_companies(merged, synced_at=report.started_at)
+        for source_report in report.sources:
+            counts = source_counts.get(str(source_report.get("source_code") or ""), {})
+            for key in ("inserted_count", "updated_count", "skipped_count"):
+                source_report[key] = int(source_report.get(key) or 0) + counts.get(key, 0)
 
     def _project_to_rag(
         self,
@@ -1307,16 +1568,62 @@ class JobSearchService:
             # JSON cache remains authoritative when optional RAG projection fails.
             return
 
-    def _mark_stale(self, provider: str) -> int:
+    def _project_companies(self, jobs: Sequence[Mapping[str, Any]], *, synced_at: str) -> None:
+        from openharness.jobhunt.company_schema import project_companies
+
+        companies = project_companies(jobs, registry=self.registry, synced_at=synced_at)
+        self.store.save_companies(companies)
+        if self.rag_store is None:
+            return
+        try:
+            self.rag_store.delete_documents("companies", where={"projection_source": "job_sync"})
+            if companies:
+                self.rag_store.add_documents(
+                    "companies",
+                    [
+                        {
+                            "id": str(company["id"]),
+                            "text": "\n".join(
+                                (
+                                    f"公司: {company.get('name', '')}",
+                                    f"岗位数量: {company.get('job_count', 0)}",
+                                    f"城市: {'、'.join(company.get('cities', []))}",
+                                    f"岗位方向/部门: {'、'.join(company.get('departments', []))}",
+                                    f"来源: {'、'.join(company.get('source_codes', []))}",
+                                    f"最近岗位发布时间: {company.get('latest_job_published_at', '')}",
+                                )
+                            ),
+                            "metadata": {
+                                **company,
+                                "company_id": company["id"],
+                                "doc_type": "company_profile",
+                                "projection_source": "job_sync",
+                                "title": company["name"],
+                                "company": company["name"],
+                            },
+                        }
+                        for company in companies
+                    ],
+                )
+        except Exception:  # noqa: BLE001
+            # JSON is authoritative; company RAG is an optional projection.
+            return
+
+    def _mark_stale(self, provider: str, source_codes: set[str] | None = None) -> int:
         jobs = self.store.load_jobs()
         count = 0
         for job in jobs:
-            if str(job.get("provider", "")) == provider and job.get("provenance_status") != "invalid":
+            if (
+                str(job.get("provider", "")) == provider
+                and (not source_codes or str(job.get("source_code", "")) in source_codes)
+                and job.get("provenance_status") != "invalid"
+            ):
                 job["provenance_status"] = "stale"
                 job["status"] = "stale"
                 count += 1
         if count:
             self.store.save_jobs(jobs)
+            self._project_companies(jobs, synced_at=_iso(self._now()))
         return count
 
     @staticmethod

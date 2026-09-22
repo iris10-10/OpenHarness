@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
@@ -14,6 +15,7 @@ from openharness.jobhunt.api.schemas import (
     JobSearchRequest,
     JobSyncRequest,
 )
+from openharness.jobhunt.company_schema import project_companies
 from openharness.jobhunt.job_provider import (
     JobSearchQuery,
     JobSearchService,
@@ -209,6 +211,8 @@ def _filter_jobs(jobs: list[dict[str, Any]], request: JobSearchRequest) -> list[
         haystack += " " + " ".join(str(tag) for tag in job.get("tags", []))
         if query and query not in haystack:
             continue
+        if request.company and request.company.lower() not in str(job.get("company", "")).lower():
+            continue
         if request.city and request.city != str(job.get("city", "")):
             continue
         if request.direction and request.direction != str(job.get("direction", "")):
@@ -231,9 +235,37 @@ def _filter_jobs(jobs: list[dict[str, Any]], request: JobSearchRequest) -> list[
     return matched
 
 
+def _balanced_jobs_for_display(jobs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Interleave sources so the first page reflects the multi-company library."""
+
+    buckets: dict[str, deque[dict[str, Any]]] = {}
+    ordered_keys: list[str] = []
+    for job in jobs:
+        key = str(job.get("source_code") or job.get("company") or "").strip()
+        if not key:
+            key = "local"
+        if key not in buckets:
+            buckets[key] = deque()
+            ordered_keys.append(key)
+        buckets[key].append(job)
+
+    balanced: list[dict[str, Any]] = []
+    while ordered_keys:
+        next_keys: list[str] = []
+        for key in ordered_keys:
+            bucket = buckets[key]
+            if bucket:
+                balanced.append(bucket.popleft())
+            if bucket:
+                next_keys.append(key)
+        ordered_keys = next_keys
+    return balanced
+
+
 @router.get("")
 def list_jobs(
     query: str = "",
+    company: str = "",
     city: str = "",
     direction: str = "",
     company_type: str = "",
@@ -248,6 +280,7 @@ def list_jobs(
     effective_page_size = page_size if isinstance(page_size, int) else 10
     request = JobSearchRequest(
         query=query,
+        company=company,
         city=city,
         direction=direction,
         company_type=company_type,
@@ -258,7 +291,9 @@ def list_jobs(
         page=effective_page,
         page_size=effective_page_size,
     )
-    matched = [_decorate_job(job) for job in _filter_jobs(_jobs(), request)]
+    matched = _balanced_jobs_for_display(
+        [_decorate_job(job) for job in _filter_jobs(_jobs(), request)]
+    )
     start = (effective_page - 1) * effective_page_size
     return {
         "items": matched[start : start + effective_page_size],
@@ -272,6 +307,7 @@ def list_jobs(
 def search(request: JobSearchRequest) -> dict[str, object]:
     return list_jobs(
         query=request.query,
+        company=request.company,
         city=request.city,
         direction=request.direction,
         company_type=request.company_type,
@@ -373,6 +409,8 @@ def sync_status() -> dict[str, object]:
             "source_code": str(item.get("source_code") or item.get("code") or ""),
             "source_site": str(item.get("source_site") or item.get("site") or ""),
             "allowed_domains": list(item.get("allowed_domains") or item.get("domains") or []),
+            "default_company": str(item.get("default_company") or ""),
+            "official_career_url": str(item.get("official_career_url") or ""),
         }
         for item in scraping.allowed_sources
         if isinstance(item, dict)
@@ -456,6 +494,15 @@ def import_job(request: JobCreateRequest) -> dict[str, object]:
     }
     jobs = [*_jobs(), job]
     save_jobs(jobs)
+    store = get_store()
+    settings = load_settings()
+    store.save_companies(
+        project_companies(
+            jobs,
+            registry=SourceRegistry.from_mappings(settings.scraping.allowed_sources),
+            synced_at=job["fetched_at"],
+        )
+    )
     return {"job": _decorate_job(job), "total": len(jobs)}
 
 

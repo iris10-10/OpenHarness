@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from openharness.jobhunt.api.routes import (
     applications,
     chat,
+    companies,
     interview,
     jobs,
     profile,
@@ -45,6 +46,7 @@ def create_app(*, static_dir: str | Path | None = None) -> FastAPI:
     api.include_router(chat.router)
     api.include_router(agent_router)
     api.include_router(jobs.router)
+    api.include_router(companies.router)
     api.include_router(applications.router)
     api.include_router(resumes.router)
     api.include_router(interview.router)

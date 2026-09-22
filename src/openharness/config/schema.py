@@ -207,10 +207,10 @@ class ScrapingSettings(BaseModel):
         }
     )
     allowed_sources: list[dict[str, Any]] = Field(default_factory=list)
-    cache_freshness_hours: int = 24
-    max_results: int = 50
+    cache_freshness_hours: int = 6
+    max_results: int = 30
     max_pages: int = 1
-    max_details: int = 50
+    max_details: int = 0
     max_response_bytes: int = 2_000_000
     respect_robots_txt: bool = True
     request_delay_min: float = 2.0

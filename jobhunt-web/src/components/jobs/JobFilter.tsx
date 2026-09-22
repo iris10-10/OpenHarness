@@ -9,6 +9,9 @@ export default function JobFilter({ onChange }: { onChange: (filters: JobFilters
         <Form.Item name="query" label="关键词">
           <Input placeholder="React / 后端 / 公司名" allowClear />
         </Form.Item>
+        <Form.Item name="company" label="公司">
+          <Input placeholder="按公司筛选" allowClear />
+        </Form.Item>
         <Form.Item name="city" label="城市">
           <Select allowClear options={["上海", "杭州", "北京", "深圳", "远程"].map((value) => ({ value, label: value }))} />
         </Form.Item>

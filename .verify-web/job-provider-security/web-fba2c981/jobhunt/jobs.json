@@ -1,0 +1,50 @@
+[
+  {
+    "id": "tencent-1",
+    "provider_record_id": "tencent-1",
+    "source_code": "tencent_careers",
+    "source_url": "https://jobs.example.com/jobs/tencent-1",
+    "apply_url": "https://jobs.example.com/jobs/tencent-1",
+    "title": "Python 后端工程师",
+    "company": "腾讯",
+    "city": "杭州",
+    "salary": "25-40K",
+    "description": "<p>负责 API</p><script>alert(1)</script>"
+  },
+  {
+    "id": "tencent-2",
+    "provider_record_id": "tencent-2",
+    "source_code": "tencent_careers",
+    "source_url": "https://jobs.example.com/jobs/tencent-2",
+    "apply_url": "https://jobs.example.com/jobs/tencent-2",
+    "title": "Python 后端工程师",
+    "company": "腾讯",
+    "city": "杭州",
+    "salary": "25-40K",
+    "description": "<p>负责 API</p><script>alert(1)</script>"
+  },
+  {
+    "id": "meituan-1",
+    "provider_record_id": "meituan-1",
+    "source_code": "meituan_careers",
+    "source_url": "https://jobs.example.com/jobs/meituan-1",
+    "apply_url": "https://jobs.example.com/jobs/meituan-1",
+    "title": "Python 后端工程师",
+    "company": "美团",
+    "city": "杭州",
+    "salary": "25-40K",
+    "description": "<p>负责 API</p><script>alert(1)</script>"
+  },
+  {
+    "id": "meituan-2",
+    "provider_record_id": "meituan-2",
+    "source_code": "meituan_careers",
+    "source_url": "https://jobs.example.com/jobs/meituan-2",
+    "apply_url": "https://jobs.example.com/jobs/meituan-2",
+    "title": "Python 后端工程师",
+    "company": "美团",
+    "city": "杭州",
+    "salary": "25-40K",
+    "description": "<p>负责 API</p><script>alert(1)</script>"
+  }
+]

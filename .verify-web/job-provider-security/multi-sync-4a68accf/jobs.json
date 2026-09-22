@@ -1,0 +1,31 @@
+[
+  {
+    "id": "job:openharness_public_jobs:safe-1",
+    "title": "Python 后端工程师",
+    "company": "示例科技",
+    "city": "杭州",
+    "salary": "",
+    "experience": "",
+    "education": "",
+    "description": "",
+    "source_code": "provider_x",
+    "source_site": "示例岗位服务",
+    "source_url": "https://jobs.example.com/jobs/safe-1",
+    "apply_url": "https://jobs.example.com/jobs/safe-1",
+    "provider": "openharness_public_jobs",
+    "provider_record_id": "safe-1",
+    "published_at": "2026年09月20日",
+    "fetched_at": "2026-09-21T15:37:02Z",
+    "last_seen_at": "2026-09-21T15:37:02Z",
+    "provenance_status": "verified",
+    "status": "active",
+    "content_hash": "6c1c5a6cad8899fe13af415a244ed919",
+    "salary_min": null,
+    "salary_max": null,
+    "tags": [],
+    "company_size": "",
+    "industry": "",
+    "financing": "",
+    "department": "平台工程"
+  }
+]
